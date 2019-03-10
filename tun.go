@@ -8,6 +8,7 @@ import (
 )
 
 var TUN_NAME = "tun100"
+var MTU = 1500
 
 type Tun struct {
 	Addr string
@@ -27,24 +28,36 @@ func (t *Tun) Setup() error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("ip addr add %s  dev %s", t.Addr, t.Ifce.Name()))
+	devName := t.Ifce.Name()
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("ip addr add %s/24  dev %s", t.Addr, devName))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Println(string(out))
 		return err
 	}
-	log.Printf("Setup tun device: %s with ip %s\n", t.Ifce.Name(), t.Addr)
+	cmd = exec.Command("sh", "-c", fmt.Sprintf("ip link set dev %s up", devName))
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Println(string(out))
+		return err
+	}
+	log.Printf("Setup tun device: %s with ip %s\n", devName, t.Addr)
 	return nil
 }
 
 func (t *Tun) Read() error {
-	packet := make([]byte, 1024)
+	b := make([]byte, MTU)
 	for {
-		n, err := t.Ifce.Read(packet)
+		n, err := t.Ifce.Read(b[:])
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("Packet Received: %x\n", packet[:n])
+		pkt := b[:n]
+		if 6 == (pkt[0] >> 4) {
+			log.Println("Discard ipv6 packet")
+			continue
+		}
+		log.Println("ip header length", ipv4HL(pkt))
 	}
 }
 
