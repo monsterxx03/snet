@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/songgao/water"
 	"log"
-	"os/exec"
 )
 
 var TUN_NAME = "tun100"
@@ -29,16 +27,13 @@ func (t *Tun) Setup() error {
 		return err
 	}
 	devName := t.Ifce.Name()
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("ip addr add %s/24  dev %s", t.Addr, devName))
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Println(string(out))
+	if err := Exec("ip addr add %s/24 dev %s", t.Addr, devName); err != nil {
 		return err
 	}
-	cmd = exec.Command("sh", "-c", fmt.Sprintf("ip link set dev %s up", devName))
-	out, err = cmd.CombinedOutput()
-	if err != nil {
-		log.Println(string(out))
+	if err := Exec("ip link set dev %s up", devName); err != nil {
+		return err
+	}
+	if err := Exec("ip link set dev %s mtu %d", devName, MTU); err != nil {
 		return err
 	}
 	log.Printf("Setup tun device: %s with ip %s\n", devName, t.Addr)
