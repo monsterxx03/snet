@@ -48,7 +48,7 @@ func (t *Tun) Read() error {
 			log.Fatal(err)
 		}
 		pkt := b[:n]
-		if 6 == (pkt[0] >> 4) {
+		if isIPv6(pkt) {
 			log.Println("Discard ipv6 packet")
 			continue
 		}
