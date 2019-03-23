@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	_ "github.com/shadowsocks/shadowsocks-go/shadowsocks"
 )
 
 func main() {
