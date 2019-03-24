@@ -4,31 +4,42 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strings"
+	"sync"
+	"io/ioutil"
 	"encoding/binary"
 )
 
+const (
+	dnsPort = 53
+	resolverFile = "/etc/resolv.conf"
+)
+
 type DNS struct {
-	lPort       int
 	udpAddr     *net.UDPAddr
 	udpListener *net.UDPConn
-	upstream    string
+	cnDNS string
+	fqDNS    string
+	originalResolver []byte
 }
 
-func NewDNS(lPort int, upstream string) (*DNS, error) {
-	uaddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", lPort))
+func NewDNS(cnDNS, fqDNS string) (*DNS, error) {
+	uaddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:53")
 	if err != nil {
 		return nil, err
 	}
 	return &DNS{
-		lPort:    lPort,
 		udpAddr:  uaddr,
-		upstream: upstream,
+		cnDNS: cnDNS,
+		fqDNS: fqDNS,
 	}, nil
 }
 
 func (s *DNS) Run() error {
 	var err error
+	err = s.updateResolverFile()
+	if err != nil {
+		return err
+	}
 	s.udpListener, err = net.ListenUDP("udp", s.udpAddr)
 	if err != nil {
 		return err
@@ -49,24 +60,87 @@ func (s *DNS) Run() error {
 	}
 }
 
-func (s *DNS) HandleUDPData(reqUaddr *net.UDPAddr, data []byte) error {
-	// TODO parse dns query data if needed
-	resp, err := dnsQuery(data, s.upstream)
-	if err != nil {
+func (s *DNS) Shutdown() error {
+	if err := s.restoreResolverFile(); err != nil {
 		return err
 	}
-	_, err = s.udpListener.WriteToUDP(resp, reqUaddr)
+	return nil
+}
+
+func (s *DNS) HandleUDPData(reqUaddr *net.UDPAddr, data []byte) error {
+	// TODO parse dns query data if needed
+	var wg sync.WaitGroup
+	var cnResp []byte
+	var fqResp []byte
+	wg.Add(1)
+	go func(data []byte) {
+		defer wg.Done()
+		var err error
+		cnResp, err = s.queryCN(data)
+		if err != nil {
+			log.Println("failed to query CN dns", err)
+		}
+	}(data)
+	wg.Add(1)
+	go func(data []byte) {
+		defer wg.Done()
+		var err error
+		fqResp, err = s.queryFQ(data)
+		if err != nil {
+			log.Println("failed to query fq dns", err)
+		}
+	}(data)
+
+	wg.Wait()
+	// TODO ChinaDNS logic, and add to bypass ipset if it's a cn ip
+	_, err := s.udpListener.WriteToUDP(fqResp, reqUaddr)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
-func dnsQuery(data []byte, dns string) ([]byte, error) {
-	if !strings.Contains(dns, ":") {
-		dns += ":53"
+
+func (s *DNS) updateResolverFile() error {
+	var err error
+	s.originalResolver, err = ioutil.ReadFile(resolverFile)
+	if err != nil {
+		return err
 	}
-	conn, err := net.Dial("tcp", dns)
+	err = ioutil.WriteFile(resolverFile, []byte("nameserver 127.0.0.1\n"), 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *DNS) restoreResolverFile() error {
+	if err := ioutil.WriteFile(resolverFile, s.originalResolver, 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *DNS) queryCN(data []byte) ([]byte, error) {
+	conn, err := net.Dial("udp", fmt.Sprintf("%s:%d", s.cnDNS, dnsPort))
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	if _, err = conn.Write(data); err != nil {
+		return nil, err
+	}
+	b := make([]byte, 1024)
+	n, err := conn.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	return b[0:n], nil
+}
+
+func (s *DNS) queryFQ(data []byte) ([]byte, error) {
+	// query fq dns by tcp, it will be captured by iptables and go out through ss
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", s.fqDNS, dnsPort))
 	if err != nil {
 		return nil, err
 	}

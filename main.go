@@ -1,13 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"flag"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"net"
 )
 
 var lHost = flag.String("listen-host", "127.0.0.1", "address to listen")
@@ -40,10 +39,8 @@ func main() {
 	exitOnError(ipset.Bypass(ssIP))
 	exitOnError(setBypassRule(ipset.Name))
 	exitOnError(setRedirectRule(*lPort))
-	addr := fmt.Sprintf("%s:%d", *lHost, *lPort)
-	exitOnError(setDNSRule(addr))
 
-	dns, err := NewDNS(*lPort, *fqDNS)
+	dns, err := NewDNS(*cnDNS, *fqDNS)
 	exitOnError(err)
 	go func() {
 		errCh <- dns.Run()
@@ -56,10 +53,6 @@ func main() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP)
 		log.Println("Got signal: ", <-c)
-		if err := delDNSRule(addr); err != nil {
-			errCh <- err
-			return
-		}
 		if err := delByassRule(ipset.Name); err != nil {
 			errCh <- err
 			return
@@ -74,11 +67,13 @@ func main() {
 	if err := <-errCh; err != nil {
 		log.Println(err)
 	}
-	if s.Shutdown() != nil {
+	if err := dns.Shutdown(); err != nil {
+		log.Println("Error during shutdown dns server", err)
+	}
+	if err := s.Shutdown(); err != nil {
 		log.Println("Error during shutdown", err)
 	}
 }
-
 
 func exitOnError(err error) {
 	if err != nil {
