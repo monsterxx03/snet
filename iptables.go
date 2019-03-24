@@ -6,16 +6,16 @@ import (
 )
 
 func setBypassRule(setName string) error {
-	if out, err := Sh("iptables -t nat -A OUTPUT -m set --match-set", setName, "dst -j RETURN"); err != nil {
+	// only bypass tcp now, since default dns server is 192.168.1.1 for systemd-resolver, which will be byassed
+	if out, err := Sh("iptables -t nat -A OUTPUT -p tcp -m set --match-set", setName, "dst -j RETURN"); err != nil {
 		log.Println(out)
 		return err
 	}
 	return nil
 }
 
-
 func setRedirectRule(tgtPort int) error {
-	if out, err := Sh("iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports", strconv.Itoa(tgtPort)) ;err != nil {
+	if out, err := Sh("iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports", strconv.Itoa(tgtPort)); err != nil {
 		log.Println(out)
 		return err
 	}
@@ -31,7 +31,7 @@ func setDNSRule(listen string) error {
 }
 
 func delByassRule(setName string) error {
-	if out, err := Sh("iptables -t nat -D OUTPUT -m set --match-set", setName, "dst -j RETURN"); err != nil {
+	if out, err := Sh("iptables -t nat -D OUTPUT -p tcp -m set --match-set", setName, "dst -j RETURN"); err != nil {
 		log.Println(out)
 		return err
 	}
