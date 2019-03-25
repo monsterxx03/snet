@@ -1,24 +1,24 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"sync"
-	"io/ioutil"
-	"encoding/binary"
 )
 
 const (
-	dnsPort = 53
+	dnsPort      = 53
 	resolverFile = "/etc/resolv.conf"
 )
 
 type DNS struct {
-	udpAddr     *net.UDPAddr
-	udpListener *net.UDPConn
-	cnDNS string
-	fqDNS    string
+	udpAddr          *net.UDPAddr
+	udpListener      *net.UDPConn
+	cnDNS            string
+	fqDNS            string
 	originalResolver []byte
 }
 
@@ -28,9 +28,9 @@ func NewDNS(cnDNS, fqDNS string) (*DNS, error) {
 		return nil, err
 	}
 	return &DNS{
-		udpAddr:  uaddr,
-		cnDNS: cnDNS,
-		fqDNS: fqDNS,
+		udpAddr: uaddr,
+		cnDNS:   cnDNS,
+		fqDNS:   fqDNS,
 	}, nil
 }
 

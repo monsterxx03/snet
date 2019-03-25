@@ -26,13 +26,13 @@ var whitelistCIDR = []string{
 }
 
 type IPSet struct {
-	Name  string
+	Name        string
 	bypassCidrs []string
 }
 
 func NewIPSet() (*IPSet, error) {
 	if out, err := Sh("which ipset"); err != nil {
-		log.Println(out)
+		log.Println("ipset not found", out)
 		return nil, err
 	}
 	return &IPSet{Name: setName, bypassCidrs: whitelistCIDR}, nil
