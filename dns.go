@@ -10,11 +10,13 @@ import (
 	"net"
 	"sort"
 	"sync"
+	"time"
 )
 
 const (
 	dnsPort      = 53
 	resolverFile = "/etc/resolv.conf"
+	dnsTimeout   = 5
 )
 
 type DNS struct {
@@ -61,7 +63,7 @@ func (s *DNS) Run() error {
 			return err
 		}
 		go func(uaddr *net.UDPAddr, data []byte) {
-			err := s.HandleUDPData(uaddr, data)
+			err := s.handle(uaddr, data)
 			if err != nil {
 				log.Println(err)
 			}
@@ -76,8 +78,7 @@ func (s *DNS) Shutdown() error {
 	return nil
 }
 
-func (s *DNS) HandleUDPData(reqUaddr *net.UDPAddr, data []byte) error {
-	// TODO parse dns query data if needed
+func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	var wg sync.WaitGroup
 	var cnResp []byte
 	var fqResp []byte
@@ -106,13 +107,14 @@ func (s *DNS) HandleUDPData(reqUaddr *net.UDPAddr, data []byte) error {
 	fmt.Println("fq resp", cndm, fq)
 	fmt.Println("cn resp", fqdm, cn)
 	var result []byte
-	if len(cn) >=1 && s.ipchecker.InChina(cn[0]) {
+	if len(cn) >= 1 && s.ipchecker.InChina(cn[0]) {
+		// if cn dns have response and it's an cn ip, we think it's a site in China
 		result = cnResp
 	} else {
+		// use fq dns's response for all ip outside of China
 		result = fqResp
 	}
 
-	// TODO ChinaDNS logic, and add to bypass ipset if it's a cn ip
 	if _, err := s.udpListener.WriteToUDP(result, reqUaddr); err != nil {
 		return err
 	}
@@ -142,7 +144,9 @@ func (s *DNS) extractIPs(data []byte) (string, []net.IP, error) {
 			return "", nil, err
 		}
 		if h.Type != dnsmessage.TypeA {
-			p.SkipAnswer()
+			if err := p.SkipAnswer(); err != nil {
+				return "", nil, err
+			}
 			fmt.Println("skip", h.Type)
 			continue
 		}
@@ -185,6 +189,9 @@ func (s *DNS) queryCN(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	defer conn.Close()
+	if err := conn.SetReadDeadline(time.Now().Add(dnsTimeout * time.Second)); err != nil {
+		return nil, err
+	}
 	if _, err = conn.Write(data); err != nil {
 		return nil, err
 	}
@@ -200,6 +207,9 @@ func (s *DNS) queryFQ(data []byte) ([]byte, error) {
 	// query fq dns by tcp, it will be captured by iptables and go out through ss
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", s.fqDNS, dnsPort))
 	if err != nil {
+		return nil, err
+	}
+	if err := conn.SetReadDeadline(time.Now().Add(dnsTimeout * time.Second)); err != nil {
 		return nil, err
 	}
 	defer conn.Close()
