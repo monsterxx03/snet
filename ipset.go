@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"log"
 	exec "os/exec"
 	"strings"
 )
@@ -34,8 +33,7 @@ type IPSet struct {
 }
 
 func NewIPSet() (*IPSet, error) {
-	if out, err := Sh("which ipset"); err != nil {
-		log.Println("ipset not found", out)
+	if _, err := Sh("which ipset"); err != nil {
 		return nil, err
 	}
 	bypass := append(Chnroutes, whitelistCIDR...)
@@ -61,7 +59,7 @@ func (s *IPSet) Init() error {
 	}()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Println(out)
+		LOG.Err(out)
 		return err
 	}
 	return nil
@@ -69,16 +67,14 @@ func (s *IPSet) Init() error {
 
 func (s *IPSet) Bypass(ip string) error {
 	s.bypassCidrs = append(s.bypassCidrs, ip)
-	if out, err := Sh("ipset add", s.Name, ip); err != nil {
-		log.Println(out)
+	if _, err := Sh("ipset add", s.Name, ip); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (s *IPSet) Destroy() error {
-	if out, err := Sh("ipset destroy", s.Name); err != nil {
-		log.Println(out)
+	if _, err := Sh("ipset destroy", s.Name); err != nil {
 		return err
 	}
 	return nil

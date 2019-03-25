@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	ss "github.com/shadowsocks/shadowsocks-go/shadowsocks"
-	"log"
 	"net"
 	"syscall"
 )
@@ -39,7 +38,7 @@ func NewServer(lHost string, lPort int, ssHost string, ssPort int, ssCphierMetho
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Listen on ", addr)
+	LOG.Info("Listen on ", addr)
 
 	cipher, err := ss.NewCipher(ssCphierMethod, ssPasswd)
 	if err != nil {
@@ -67,7 +66,7 @@ func (s *Server) Run() error {
 		go func(conn *net.TCPConn) {
 			defer conn.Close()
 			if err := s.HandleConn(conn); err != nil {
-				log.Println(err)
+				LOG.Err(err)
 			}
 		}(conn)
 	}

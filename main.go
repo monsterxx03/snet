@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -20,19 +19,19 @@ var ssPasswd = flag.String("ss-passwd", "", "ss server's password")
 var cnDNS = flag.String("cn-dns", "114.114.114.114", "dns server in China")
 var fqDNS = flag.String("fq-dns", "8.8.8.8", "dns server not in China")
 
+var LOG *Logger
+
 func main() {
 	flag.Parse()
+	LOG = NewLogger(LOG_ERR)
 	if *ssPasswd == "" {
-		log.Println("ss-passwd is required")
-		os.Exit(1)
+		LOG.Exit("ss-passwd is required")
 	}
 	ips, err := net.LookupIP(*ssHost)
 	exitOnError(err)
 	ssIP := ips[0].String()
 	s, err := NewServer(*lHost, *lPort, ssIP, *ssPort, *ssCphierMethod, *ssPasswd)
-	if err != nil {
-		log.Println(err)
-	}
+	exitOnError(err)
 	errCh := make(chan error)
 
 	ipset, err := NewIPSet()
@@ -54,7 +53,7 @@ func main() {
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP)
-		log.Println("Got signal: ", <-c)
+		LOG.Info("Got signal:", <-c)
 		if err := delByassRule(ipset.Name); err != nil {
 			errCh <- err
 			return
@@ -67,19 +66,18 @@ func main() {
 	}()
 
 	if err := <-errCh; err != nil {
-		log.Println(err)
+		LOG.Err(err)
 	}
 	if err := dns.Shutdown(); err != nil {
-		log.Println("Error during shutdown dns server", err)
+		LOG.Err("Error during shutdown dns server", err)
 	}
 	if err := s.Shutdown(); err != nil {
-		log.Println("Error during shutdown", err)
+		LOG.Err("Error during shutdown server", err)
 	}
 }
 
 func exitOnError(err error) {
 	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+		LOG.Exit(err)
 	}
 }

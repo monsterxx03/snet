@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"sort"
 	"sync"
@@ -65,7 +64,7 @@ func (s *DNS) Run() error {
 		go func(uaddr *net.UDPAddr, data []byte) {
 			err := s.handle(uaddr, data)
 			if err != nil {
-				log.Println(err)
+				LOG.Err(err)
 			}
 		}(uaddr, b[:n])
 	}
@@ -89,7 +88,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		var err error
 		cnResp, err = s.queryCN(data)
 		if err != nil {
-			log.Println("failed to query CN dns", err)
+			LOG.Warn("failed to query CN dns", err)
 		}
 	}(data)
 	wg.Add(1)
@@ -98,7 +97,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		var err error
 		fqResp, err = s.queryFQ(data)
 		if err != nil {
-			log.Println("failed to query fq dns", err)
+			LOG.Warn("failed to query fq dns", err)
 		}
 	}(data)
 
@@ -106,8 +105,8 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	// TODO no need to wait for fq if cn response first and it's a cn ip
 	cndm, cn, _ := s.extractIPs(cnResp)
 	fqdm, fq, _ := s.extractIPs(fqResp)
-	fmt.Println("fq resp", cndm, fq)
-	fmt.Println("cn resp", fqdm, cn)
+	LOG.Debug("fq resp", cndm, fq)
+	LOG.Debug("cn resp", fqdm, cn)
 	var result []byte
 	if len(cn) >= 1 && s.ipchecker.InChina(cn[0]) {
 		// if cn dns have response and it's an cn ip, we think it's a site in China
@@ -131,7 +130,6 @@ func (s *DNS) extractIPs(data []byte) (string, []net.IP, error) {
 		return "", nil, err
 	}
 	if err := p.SkipAllQuestions(); err != nil {
-		log.Println("failed to skip questions")
 		return "", nil, err
 	}
 	var gotIPs []net.IP
@@ -142,19 +140,17 @@ func (s *DNS) extractIPs(data []byte) (string, []net.IP, error) {
 			break
 		}
 		if err != nil {
-			log.Println("fail on header", err)
 			return "", nil, err
 		}
 		if h.Type != dnsmessage.TypeA {
 			if err := p.SkipAnswer(); err != nil {
 				return "", nil, err
 			}
-			fmt.Println("skip", h.Type)
+			LOG.Debug("skip", h.Type)
 			continue
 		}
 		r, err := p.AResource()
 		if err != nil {
-			log.Println("fai on a record", err)
 			return "", nil, err
 		}
 		gotIPs = append(gotIPs, r.A[:])
