@@ -9,6 +9,8 @@ import (
 	"syscall"
 )
 
+//go:generate go run updateChroute.go
+
 var lHost = flag.String("listen-host", "127.0.0.1", "address to listen")
 var lPort = flag.Int("listen-port", 1111, "port to listen")
 var ssHost = flag.String("ss-host", "127.0.0.1", "ss server's address")

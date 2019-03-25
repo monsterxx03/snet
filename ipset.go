@@ -4,7 +4,7 @@ import (
 	"log"
 )
 
-const setName = "PASS_SNET"
+const setName = "BYPASS_SNET"
 
 // https://en.wikipedia.org/wiki/Reserved_IP_addresses#Reserved_IPv4_addresses
 var whitelistCIDR = []string{
