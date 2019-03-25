@@ -79,6 +79,7 @@ func (s *DNS) Shutdown() error {
 }
 
 func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
+	// TODO add cache for dns query based on TTL
 	var wg sync.WaitGroup
 	var cnResp []byte
 	var fqResp []byte
@@ -102,6 +103,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	}(data)
 
 	wg.Wait()
+	// TODO no need to wait for fq if cn response first and it's a cn ip
 	cndm, cn, _ := s.extractIPs(cnResp)
 	fqdm, fq, _ := s.extractIPs(fqResp)
 	fmt.Println("fq resp", cndm, fq)
