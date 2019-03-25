@@ -1,7 +1,10 @@
 package main
 
 import (
+	"io"
 	"log"
+	exec "os/exec"
+	"strings"
 )
 
 const setName = "BYPASS_SNET"
@@ -35,21 +38,31 @@ func NewIPSet() (*IPSet, error) {
 		log.Println("ipset not found", out)
 		return nil, err
 	}
-	return &IPSet{Name: setName, bypassCidrs: whitelistCIDR}, nil
+	bypass := append(Chnroutes, whitelistCIDR...)
+	return &IPSet{Name: setName, bypassCidrs: bypass}, nil
 }
 
 // Init will create a bypass ipset, and config iptables to RETURN traffic in this set.
 func (s *IPSet) Init() error {
 	Sh("ipset destroy", s.Name)
-	if out, err := Sh("ipset create", s.Name, "hash:net"); err != nil {
-		log.Println(out)
+	result := make([]string, 0, len(s.bypassCidrs)+1)
+	result = append(result, "create "+s.Name+" hash:net family inet hashsize 1024 maxelem 65536")
+	for _, route := range s.bypassCidrs {
+		result = append(result, "add "+s.Name+" "+route)
+	}
+	cmd := exec.Command("ipset", "restore")
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
 		return err
 	}
-	for _, cidr := range s.bypassCidrs {
-		if out, err := Sh("ipset add", s.Name, cidr); err != nil {
-			log.Println(out)
-			return err
-		}
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, strings.Join(result, "\n"))
+	}()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Println(out)
+		return err
 	}
 	return nil
 }
