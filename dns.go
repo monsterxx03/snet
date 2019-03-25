@@ -1,11 +1,14 @@
 package main
 
 import (
+	"golang.org/x/net/dns/dnsmessage"
+
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
+	"sort"
 	"sync"
 )
 
@@ -20,6 +23,7 @@ type DNS struct {
 	cnDNS            string
 	fqDNS            string
 	originalResolver []byte
+	ipchecker        *IPChecker
 }
 
 func NewDNS(cnDNS, fqDNS string) (*DNS, error) {
@@ -27,10 +31,15 @@ func NewDNS(cnDNS, fqDNS string) (*DNS, error) {
 	if err != nil {
 		return nil, err
 	}
+	ipchecker, err := NewIPChecker()
+	if err != nil {
+		return nil, err
+	}
 	return &DNS{
-		udpAddr: uaddr,
-		cnDNS:   cnDNS,
-		fqDNS:   fqDNS,
+		udpAddr:   uaddr,
+		cnDNS:     cnDNS,
+		fqDNS:     fqDNS,
+		ipchecker: ipchecker,
 	}, nil
 }
 
@@ -92,13 +101,62 @@ func (s *DNS) HandleUDPData(reqUaddr *net.UDPAddr, data []byte) error {
 	}(data)
 
 	wg.Wait()
+	cndm, cn, _ := s.extractIPs(cnResp)
+	fqdm, fq, _ := s.extractIPs(fqResp)
+	fmt.Println("fq resp", cndm, fq)
+	fmt.Println("cn resp", fqdm, cn)
+	var result []byte
+	if len(cn) >=1 && s.ipchecker.InChina(cn[0]) {
+		result = cnResp
+	} else {
+		result = fqResp
+	}
+
 	// TODO ChinaDNS logic, and add to bypass ipset if it's a cn ip
-	_, err := s.udpListener.WriteToUDP(fqResp, reqUaddr)
-	if err != nil {
+	if _, err := s.udpListener.WriteToUDP(result, reqUaddr); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (s *DNS) extractIPs(data []byte) (string, []net.IP, error) {
+	// it sucks
+	var p dnsmessage.Parser
+	if _, err := p.Start(data); err != nil {
+		return "", nil, err
+	}
+	if err := p.SkipAllQuestions(); err != nil {
+		log.Println("failed to skip questions")
+		return "", nil, err
+	}
+	var gotIPs []net.IP
+	var name string
+	for {
+		h, err := p.AnswerHeader()
+		if err == dnsmessage.ErrSectionDone {
+			break
+		}
+		if err != nil {
+			log.Println("fail on header", err)
+			return "", nil, err
+		}
+		if h.Type != dnsmessage.TypeA {
+			p.SkipAnswer()
+			fmt.Println("skip", h.Type)
+			continue
+		}
+		r, err := p.AResource()
+		if err != nil {
+			log.Println("fai on a record", err)
+			return "", nil, err
+		}
+		gotIPs = append(gotIPs, r.A[:])
+		name = h.Name.String()
+		break
+	}
+	sort.Slice(gotIPs, func(i, j int) bool { return gotIPs[i].String() < gotIPs[j].String() })
+	return name, gotIPs, nil
 }
 
 func (s *DNS) updateResolverFile() error {

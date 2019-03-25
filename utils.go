@@ -13,8 +13,3 @@ func Sh(cmds ...string) (result string, err error) {
 	}
 	return string(output), nil
 }
-
-// ipset save result:
-// create test hash:net family inet hashsize 1024 maxelem 65536
-// add test 1.1.1.3
-// add test 1.1.1.1
