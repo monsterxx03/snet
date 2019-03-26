@@ -79,7 +79,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	var wg sync.WaitGroup
 	var cnResp []byte
 	var fqResp []byte
-	wg.Add(1)
+	wg.Add(2)
 	go func(data []byte) {
 		defer wg.Done()
 		var err error
@@ -88,7 +88,6 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			LOG.Warn("failed to query CN dns", err)
 		}
 	}(data)
-	wg.Add(1)
 	go func(data []byte) {
 		defer wg.Done()
 		var err error
