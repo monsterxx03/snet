@@ -4,45 +4,85 @@ import (
 	"strconv"
 )
 
-func setBypassRule(setName string) error {
-	// only bypass tcp now, since default dns server is 192.168.1.1 for systemd-resolver, which will be byassed
-	if _, err := Sh("iptables -t nat -A OUTPUT -p tcp -m set --match-set", setName, "dst -j RETURN"); err != nil {
+const (
+	SnetChainName = "SNET"
+)
+
+type SNETChain struct {
+	Name string
+}
+
+func NewSNETChain() *SNETChain {
+	return &SNETChain{
+		Name: SnetChainName,
+	}
+}
+
+// Init setup some a SNET chain, it will capture all tcp & dns traffic.
+func (t *SNETChain) Init() error {
+	Sh("iptables -t nat -X", t.Name)
+	if _, err := Sh("iptables -t nat -N", t.Name); err != nil {
+		LOG.Err("Failed to create iptable chain", t.Name)
+		return err
+	}
+	// let snet chain handle all tcp traffic
+	if _, err := Sh("iptables -t nat -A OUTPUT -p tcp -j", t.Name); err != nil {
+		return err
+	}
+	// let snet chain handle all udp dns query
+	if _, err := Sh("iptables -t nat -A OUTPUT -p udp --dport 53 -j", t.Name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func delByassRule(setName string) error {
-	if _, err := Sh("iptables -t nat -D OUTPUT -p tcp -m set --match-set", setName, "dst -j RETURN"); err != nil {
+func (t *SNETChain) addRule(rule string) error {
+	if _, err := Sh("iptables -t nat -A", t.Name, rule); err != nil {
 		return err
 	}
 	return nil
 }
 
-func setRedirectRule(tgtPort int) error {
-	if _, err := Sh("iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports", strconv.Itoa(tgtPort)); err != nil {
+// ByPassIPSet will set rule to bypass tcp redirect for some ip ranges.
+func (t *SNETChain) ByPassIPSet(set *IPSet) error {
+	if err := t.addRule("-p tcp -m set --match-set " + set.Name + " dst -j RETURN"); err != nil {
 		return err
 	}
 	return nil
 }
 
-func delRedirectRule(tgtPort int) error {
-	if _, err := Sh("iptables -t nat -D OUTPUT -p tcp -j REDIRECT --to-ports", strconv.Itoa(tgtPort)); err != nil {
-		return nil
-	}
-	return nil
-}
-
-// not used now, since some system will query dns via ipv6
-func setDNSRule(listen string) error {
-	if _, err := Sh("iptables -t nat -A OUTPUT -p udp --dport 53 -j DNAT --to-destination", listen); err != nil {
+// RedirectTCP will redirect all out going tcp traffic to snet's tcp port
+func (t *SNETChain) RedirectTCP(tgtPort int) error {
+	if err := t.addRule("-p tcp -j REDIRECT --to-ports " + strconv.Itoa(tgtPort)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func delDNSRule(listen string) error {
-	if _, err := Sh("iptables -t nat -D OUTPUT -p udp --dport 53 -j DNAT --to-destination", listen); err != nil {
+// RedirectDNS will redirect all udp dns query to snet's udp port, but bypass cn dns
+func (t *SNETChain) RedirectDNS(localListenAddr, cnDNS string) error {
+	// bypass cn dns, otherwise will dns query will be in loop
+	if err := t.addRule("-d " + cnDNS + " -j RETURN"); err != nil {
+		return err
+	}
+	// redirect output dns query to snet's udp port
+	if err := t.addRule("-p udp --dport 53 -j DNAT --to-destination " + localListenAddr); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *SNETChain) Clear() error {
+	if _, err := Sh("iptables -t nat -D OUTPUT -p tcp -j", t.Name); err != nil {
+		return err
+	}
+	if _, err := Sh("iptables -t nat -D OUTPUT -p udp --dport 53 -j", t.Name); err != nil {
+		return err
+	}
+	if _, err := Sh("iptables -t nat -F", t.Name); err != nil {
+		return err
+	}
+	if _, err := Sh("iptables -t nat -X", t.Name); err != nil {
 		return err
 	}
 	return nil

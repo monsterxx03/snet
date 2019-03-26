@@ -27,8 +27,8 @@ type DNS struct {
 	ipchecker        *IPChecker
 }
 
-func NewDNS(cnDNS, fqDNS string) (*DNS, error) {
-	uaddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:53")
+func NewDNS(laddr, cnDNS, fqDNS string) (*DNS, error) {
+	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
 	}
@@ -46,10 +46,6 @@ func NewDNS(cnDNS, fqDNS string) (*DNS, error) {
 
 func (s *DNS) Run() error {
 	var err error
-	err = s.updateResolverFile()
-	if err != nil {
-		return err
-	}
 	s.udpListener, err = net.ListenUDP("udp", s.udpAddr)
 	if err != nil {
 		return err
@@ -71,7 +67,7 @@ func (s *DNS) Run() error {
 }
 
 func (s *DNS) Shutdown() error {
-	if err := s.restoreResolverFile(); err != nil {
+	if err := s.udpListener.Close(); err != nil {
 		return err
 	}
 	return nil
