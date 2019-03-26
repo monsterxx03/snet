@@ -59,7 +59,7 @@ func (s *IPSet) Init() error {
 	}()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		LOG.Err(out)
+		LOG.Err(string(out))
 		return err
 	}
 	return nil

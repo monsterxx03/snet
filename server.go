@@ -38,7 +38,7 @@ func NewServer(lHost string, lPort int, ssHost string, ssPort int, ssCphierMetho
 	if err != nil {
 		return nil, err
 	}
-	LOG.Info("Listen on ", addr)
+	LOG.Info("Listen on tcp:", addr)
 
 	cipher, err := ss.NewCipher(ssCphierMethod, ssPasswd)
 	if err != nil {

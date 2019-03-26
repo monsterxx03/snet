@@ -11,14 +11,25 @@ import (
 
 //go:generate go run chnroutes_generate.go
 
-var lHost = flag.String("listen-host", "127.0.0.1", "address to listen")
-var lPort = flag.Int("listen-port", 1111, "port to listen")
-var ssHost = flag.String("ss-host", "127.0.0.1", "ss server's address")
-var ssPort = flag.Int("ss-port", 8080, "ss sever's port")
-var ssCphierMethod = flag.String("ss-chpier-method", "aes-256-cfb", "ss server's auth mnethod")
+const (
+	DefaultLHost        = "127.0.0.1"
+	DefaultLPort        = 1111
+	DefaultChpierMethod = "aes-256-cfb"
+	DefaultSSHost       = ""
+	DefaultSSPort       = 8080
+	DefaultCNDNS        = "114.114.114.114"
+	DefaultFQDNS        = "8.8.8.8"
+)
+
+var configFile = flag.String("config", "", "json cofig file path")
+var lHost = flag.String("listen-host", DefaultLHost, "address to listen")
+var lPort = flag.Int("listen-port", DefaultLPort, "port to listen")
+var ssHost = flag.String("ss-host", DefaultSSHost, "ss server's address")
+var ssPort = flag.Int("ss-port", DefaultSSPort, "ss sever's port")
+var ssCphierMethod = flag.String("ss-chpier-method", DefaultChpierMethod, "ss server's auth mnethod")
 var ssPasswd = flag.String("ss-passwd", "", "ss server's password")
-var cnDNS = flag.String("cn-dns", "114.114.114.114", "dns server in China")
-var fqDNS = flag.String("fq-dns", "8.8.8.8", "dns server not in China")
+var cnDNS = flag.String("cn-dns", DefaultCNDNS, "dns server in China")
+var fqDNS = flag.String("fq-dns", DefaultFQDNS, "dns server not in China")
 var verbose = flag.Bool("v", false, "verbose logging")
 
 var LOG *Logger
@@ -26,6 +37,7 @@ var IPChain *SNETChain
 
 func main() {
 	flag.Parse()
+
 	var logLevel int
 	if *verbose {
 		logLevel = LOG_DEBUG
@@ -33,8 +45,27 @@ func main() {
 		logLevel = LOG_INFO
 	}
 	LOG = NewLogger(logLevel)
+
+	config := &Config{}
+	var err error
+	if *configFile != "" {
+		config, err = LoadConfig(*configFile)
+		exitOnError(err)
+		lHost = &config.LHost
+		lPort = &config.LPort
+		ssHost = &config.SSHost
+		ssPort = &config.SSPort
+		ssCphierMethod = &config.SSCphierMethod
+		ssPasswd = &config.SSPasswd
+		cnDNS = &config.CNDNS
+		fqDNS = &config.FQDNS
+	}
+
 	if *ssPasswd == "" {
 		LOG.Exit("ss-passwd is required")
+	}
+	if *ssHost == "" {
+		LOG.Exit("ss-host is required")
 	}
 	ips, err := net.LookupIP(*ssHost)
 	exitOnError(err)

@@ -1,0 +1,10 @@
+{
+    "listen-host": "127.0.0.1",
+    "listen-port": 1111,
+    "ss-host": "",
+    "ss-port": 8080,
+    "ss-chpier-method": "aes-256-cfb",
+    "ss-passwd": "passwd",
+    "cn-dns": "114.114.114.114",
+    "fq-dns": "8.8.8.8",
+}

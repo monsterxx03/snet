@@ -2,6 +2,7 @@ all: build
 
 build:
 	go generate
+	go fmt
 	go build -o bin/snet
 
 run:
@@ -10,6 +11,7 @@ run:
 update:
 	curl http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest -o apnic.txt
 	go generate
+	go fmt
 
 clear:
 	sudo iptables -t nat -F
