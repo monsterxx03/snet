@@ -31,14 +31,17 @@ var ssPasswd = flag.String("ss-passwd", "", "ss server's password")
 var cnDNS = flag.String("cn-dns", DefaultCNDNS, "dns server in China")
 var fqDNS = flag.String("fq-dns", DefaultFQDNS, "dns server not in China")
 var verbose = flag.Bool("v", false, "verbose logging")
+var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 
 var LOG *Logger
-var IPChain *SNETChain
+var ipchain *SNETChain
 
 func main() {
 	flag.Parse()
 
 	var logLevel int
+	var err error
+
 	if *verbose {
 		logLevel = LOG_DEBUG
 	} else {
@@ -46,8 +49,17 @@ func main() {
 	}
 	LOG = NewLogger(logLevel)
 
+	ipset, err := NewIPSet()
+	exitOnError(err)
+	ipchain = NewSNETChain()
+
+	if *clean {
+		ipchain.Destroy()
+		ipset.Destroy()
+		os.Exit(1)
+	}
+
 	config := &Config{}
-	var err error
 	if *configFile != "" {
 		config, err = LoadConfig(*configFile)
 		exitOnError(err)
@@ -74,18 +86,15 @@ func main() {
 	exitOnError(err)
 	errCh := make(chan error)
 
-	ipset, err := NewIPSet()
-	exitOnError(err)
 	exitOnError(ipset.Init())
 	exitOnError(ipset.Bypass(ssIP))
 
 	// order is important
-	IPChain = NewSNETChain()
-	exitOnError(IPChain.Init())
-	exitOnError(IPChain.ByPassIPSet(ipset))
-	exitOnError(IPChain.RedirectTCP(*lPort))
+	exitOnError(ipchain.Init())
+	exitOnError(ipchain.ByPassIPSet(ipset))
+	exitOnError(ipchain.RedirectTCP(*lPort))
 	addr := fmt.Sprintf("%s:%d", *lHost, *lPort)
-	exitOnError(IPChain.RedirectDNS(addr, *cnDNS))
+	exitOnError(ipchain.RedirectDNS(addr, *cnDNS))
 
 	dns, err := NewDNS(addr, *cnDNS, *fqDNS)
 	exitOnError(err)
@@ -106,12 +115,8 @@ func main() {
 	if err := <-errCh; err != nil {
 		LOG.Err(err)
 	}
-	if err := IPChain.Clear(); err != nil {
-		LOG.Err(err)
-	}
-	if err != ipset.Destroy() {
-		LOG.Err(err)
-	}
+	ipchain.Destroy()
+	ipset.Destroy()
 
 	if err := dns.Shutdown(); err != nil {
 		LOG.Err("Error during shutdown dns server", err)

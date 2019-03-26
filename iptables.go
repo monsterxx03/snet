@@ -72,18 +72,9 @@ func (t *SNETChain) RedirectDNS(localListenAddr, cnDNS string) error {
 	return nil
 }
 
-func (t *SNETChain) Clear() error {
-	if _, err := Sh("iptables -t nat -D OUTPUT -p tcp -j", t.Name); err != nil {
-		return err
-	}
-	if _, err := Sh("iptables -t nat -D OUTPUT -p udp --dport 53 -j", t.Name); err != nil {
-		return err
-	}
-	if _, err := Sh("iptables -t nat -F", t.Name); err != nil {
-		return err
-	}
-	if _, err := Sh("iptables -t nat -X", t.Name); err != nil {
-		return err
-	}
-	return nil
+func (t *SNETChain) Destroy() {
+	Sh("iptables -t nat -D OUTPUT -p tcp -j", t.Name)
+	Sh("iptables -t nat -D OUTPUT -p udp --dport 53 -j", t.Name)
+	Sh("iptables -t nat -F", t.Name)
+	Sh("iptables -t nat -X", t.Name)
 }

@@ -73,9 +73,8 @@ func (s *IPSet) Bypass(ip string) error {
 	return nil
 }
 
-func (s *IPSet) Destroy() error {
-	if _, err := Sh("ipset destroy", s.Name); err != nil {
-		return err
+func (s *IPSet) Destroy() {
+	if out, err := Sh("ipset destroy", s.Name); err != nil {
+		LOG.Err(out)
 	}
-	return nil
 }
