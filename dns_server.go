@@ -1,13 +1,10 @@
 package main
 
 import (
-	"golang.org/x/net/dns/dnsmessage"
-
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"net"
-	"sort"
 	"sync"
 	"time"
 )
@@ -135,44 +132,6 @@ func (s *DNS) parse(data []byte) (*DNSMsg, error) {
 		return nil, err
 	}
 	return msg, nil
-}
-
-func (s *DNS) extractIPs(data []byte) (string, []net.IP, error) {
-	// it sucks
-	var p dnsmessage.Parser
-	if _, err := p.Start(data); err != nil {
-		return "", nil, err
-	}
-	if err := p.SkipAllQuestions(); err != nil {
-		return "", nil, err
-	}
-	var gotIPs []net.IP
-	var name string
-	for {
-		h, err := p.AnswerHeader()
-		if err == dnsmessage.ErrSectionDone {
-			break
-		}
-		if err != nil {
-			return "", nil, err
-		}
-		if h.Type != dnsmessage.TypeA {
-			if err := p.SkipAnswer(); err != nil {
-				return "", nil, err
-			}
-			LOG.Debug("skip", h.Type)
-			continue
-		}
-		r, err := p.AResource()
-		if err != nil {
-			return "", nil, err
-		}
-		gotIPs = append(gotIPs, r.A[:])
-		name = h.Name.String()
-		break
-	}
-	sort.Slice(gotIPs, func(i, j int) bool { return gotIPs[i].String() < gotIPs[j].String() })
-	return name, gotIPs, nil
 }
 
 func (s *DNS) updateResolverFile() error {
