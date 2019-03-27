@@ -39,7 +39,7 @@ var ipchain *SNETChain
 func main() {
 	flag.Parse()
 
-	var logLevel int
+	var logLevel LogLevel
 	var err error
 
 	if *verbose {

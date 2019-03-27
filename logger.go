@@ -1,12 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
 
+type LogLevel int
+
 const (
-	LOG_EXIT = iota
+	LOG_EXIT LogLevel = iota
 	LOG_CRI
 	LOG_ERR
 	LOG_WARN
@@ -14,21 +17,34 @@ const (
 	LOG_DEBUG
 )
 
-type Logger struct {
-	log   *log.Logger
-	level int
+var levelmap = [...]string{
+	"EXIT",
+	"CRITICAL",
+	"ERROR",
+	"WARN",
+	"INFO",
+	"DEBUG",
 }
 
-func NewLogger(level int) *Logger {
+func (level LogLevel) String() string {
+	return levelmap[int(level)]
+}
+
+type Logger struct {
+	log   *log.Logger
+	level LogLevel
+}
+
+func NewLogger(level LogLevel) *Logger {
 	return &Logger{
 		log:   log.New(os.Stdout, "snet:", log.LUTC|log.LstdFlags),
 		level: level,
 	}
 }
 
-func (l *Logger) l(level int, v ...interface{}) {
+func (l *Logger) l(level LogLevel, v ...interface{}) {
 	if l.level >= level {
-		l.log.Println(v...)
+		l.log.Println(append([]interface{}{fmt.Sprintf("%s:", level)}, v...)...)
 	}
 }
 
