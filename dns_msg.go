@@ -69,7 +69,18 @@ func (m *DNSMsg) String() string {
 		t, m.ID, m.QDCount, m.ANCount, m.QDomain, m.QType, m.QClass, m.ARecords)
 }
 
+func (m *DNSMsg) IsQuery() bool {
+	return m.qr == 0
+}
+
+func (m *DNSMsg) IsAnswer() bool {
+	return m.qr == 1
+}
+
 func NewDNSMsg(data []byte) (*DNSMsg, error) {
+	if len(data) == 0 {
+		return nil, errors.New("empty dns msg")
+	}
 	id := binary.BigEndian.Uint16(data[:2])
 	isAnswer := false
 	if data[2]&0x80 == 0x80 {
@@ -121,7 +132,7 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 			case 0x0:
 				if c1 != 0 || c2 != 0 {
 					// Normal dns server's response NAME field always a pointer to existing data(NAME in QUESTION)
-					// if top 2 bytes not equal 0, means it's an uncompressed response
+					// if top 2 bytes not equal 0, it's an uncompressed msg.
 					return nil, errors.New("Maybe this dns server didn't compress response data?")
 				}
 			case 0xC0:
@@ -132,7 +143,7 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 				rdLen := binary.BigEndian.Uint16(body[:2])
 				body = body[2:] // skip rdLen
 				if atype.String() != "A" {
-					// only intereseted in A type, skip left rdata
+					// only intereseted in A type, skip left rdata for other records
 					body = body[rdLen:]
 					continue
 				}
