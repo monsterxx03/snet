@@ -43,8 +43,8 @@ func (t *SNETChain) addRule(rule string) error {
 	return nil
 }
 
-// ByPassIPSet will set rule to bypass tcp redirect for some ip ranges.
-func (t *SNETChain) ByPassIPSet(set *IPSet) error {
+// BypassIPSet will set rule to bypass tcp redirect for some ip ranges.
+func (t *SNETChain) BypassIPSet(set *IPSet) error {
 	if err := t.addRule("-p tcp -m set --match-set " + set.Name + " dst -j RETURN"); err != nil {
 		return err
 	}

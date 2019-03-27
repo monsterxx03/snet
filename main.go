@@ -91,7 +91,7 @@ func main() {
 
 	// order is important
 	exitOnError(ipchain.Init())
-	exitOnError(ipchain.ByPassIPSet(ipset))
+	exitOnError(ipchain.BypassIPSet(ipset))
 	exitOnError(ipchain.RedirectTCP(*lPort))
 	addr := fmt.Sprintf("%s:%d", *lHost, *lPort)
 	exitOnError(ipchain.RedirectDNS(addr, *cnDNS))
