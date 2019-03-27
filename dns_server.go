@@ -79,13 +79,17 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	var wg sync.WaitGroup
 	var cnResp []byte
 	var fqResp []byte
+	dnsQuery, err := s.parse(data)
+	if err != nil {
+		return err
+	}
 	wg.Add(2)
 	go func(data []byte) {
 		defer wg.Done()
 		var err error
 		cnResp, err = s.queryCN(data)
 		if err != nil {
-			LOG.Warn("failed to query CN dns", err)
+			LOG.Warn("failed to query CN dns:", dnsQuery, err)
 		}
 	}(data)
 	go func(data []byte) {
@@ -93,18 +97,24 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		var err error
 		fqResp, err = s.queryFQ(data)
 		if err != nil {
-			LOG.Warn("failed to query fq dns", err)
+			LOG.Warn("failed to query fq dns:", dnsQuery, err)
 		}
 	}(data)
 
 	wg.Wait()
 	// TODO no need to wait for fq if cn response first and it's a cn ip
-	cndm, cn, _ := s.extractIPs(cnResp)
-	fqdm, fq, _ := s.extractIPs(fqResp)
-	LOG.Debug("fq resp", cndm, fq)
-	LOG.Debug("cn resp", fqdm, cn)
+	dnsCN, err := s.parse(cnResp)
+	if err != nil {
+		return err
+	}
+	dnsFQ, err := s.parse(fqResp)
+	if err != nil {
+		return err
+	}
+	LOG.Debug("fq", dnsFQ)
+	LOG.Debug("cn", dnsCN)
 	var result []byte
-	if len(cn) >= 1 && s.ipchecker.InChina(cn[0]) {
+	if len(dnsCN.ARecords) >= 1 && s.ipchecker.InChina(dnsCN.ARecords[0].IP) {
 		// if cn dns have response and it's an cn ip, we think it's a site in China
 		result = cnResp
 	} else {
@@ -117,6 +127,14 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	}
 
 	return nil
+}
+
+func (s *DNS) parse(data []byte) (*DNSMsg, error) {
+	msg, err := NewDNSMsg(data)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 
 func (s *DNS) extractIPs(data []byte) (string, []net.IP, error) {

@@ -20,7 +20,6 @@ func NewSNETChain() *SNETChain {
 
 // Init setup some a SNET chain, it will capture all tcp & dns traffic.
 func (t *SNETChain) Init() error {
-	Sh("iptables -t nat -X", t.Name)
 	if _, err := Sh("iptables -t nat -N", t.Name); err != nil {
 		LOG.Err("Failed to create iptable chain", t.Name)
 		return err

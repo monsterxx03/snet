@@ -86,10 +86,12 @@ func main() {
 	exitOnError(err)
 	errCh := make(chan error)
 
+	// order is important
+	ipchain.Destroy()
+	ipset.Destroy()
 	exitOnError(ipset.Init())
 	exitOnError(ipset.Bypass(ssIP))
 
-	// order is important
 	exitOnError(ipchain.Init())
 	exitOnError(ipchain.BypassIPSet(ipset))
 	exitOnError(ipchain.RedirectTCP(*lPort))
