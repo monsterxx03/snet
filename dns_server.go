@@ -81,17 +81,17 @@ func (s *DNS) Shutdown() error {
 
 func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	var wg sync.WaitGroup
-	var cnResp []byte
-	var fqResp []byte
+	var cnData []byte
+	var fqData []byte
 	dnsQuery, err := s.parse(data)
 	if err != nil {
 		return err
 	}
 	if s.cache != nil {
-		cachedResp := s.cache.Get(dnsQuery.QDomain)
-		if cachedResp != nil {
+		cachedData := s.cache.Get(dnsQuery.QDomain)
+		if cachedData != nil {
 			LOG.Debug("dns cache hit:", dnsQuery.QDomain)
-			resp := cachedResp.([]byte)
+			resp := cachedData.([]byte)
 			// rewrite first 2 bytes(dns id)
 			resp[0] = data[0]
 			resp[1] = data[1]
@@ -105,7 +105,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	go func(data []byte) {
 		defer wg.Done()
 		var err error
-		cnResp, err = s.queryCN(data)
+		cnData, err = s.queryCN(data)
 		if err != nil {
 			LOG.Warn("failed to query CN dns:", dnsQuery, err)
 		}
@@ -113,7 +113,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	go func(data []byte) {
 		defer wg.Done()
 		var err error
-		fqResp, err = s.queryFQ(data)
+		fqData, err = s.queryFQ(data)
 		if err != nil {
 			LOG.Warn("failed to query fq dns:", dnsQuery, err)
 		}
@@ -121,33 +121,33 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 
 	wg.Wait()
 	// TODO no need to wait for fq if cn response first and it's a cn ip
-	dnsCN, err := s.parse(cnResp)
+	cnMsg, err := s.parse(cnData)
 	if err != nil {
 		return err
 	}
-	dnsFQ, err := s.parse(fqResp)
+	fqMsg, err := s.parse(fqData)
 	if err != nil {
 		return err
 	}
-	LOG.Debug("fq", dnsFQ)
-	LOG.Debug("cn", dnsCN)
+	LOG.Debug("fq", fqMsg)
+	LOG.Debug("cn", cnMsg)
 	var raw []byte
-	use := dnsCN
-	if len(dnsCN.ARecords) >= 1 && s.ipchecker.InChina(dnsCN.ARecords[0].IP) {
+	useMsg := cnMsg
+	if len(cnMsg.ARecords) >= 1 && s.ipchecker.InChina(cnMsg.ARecords[0].IP) {
 		// if cn dns have response and it's an cn ip, we think it's a site in China
-		raw = cnResp
+		raw = cnData
 	} else {
 		// use fq dns's response for all ip outside of China
-		raw = fqResp
-		use = dnsFQ
+		raw = fqData
+		useMsg = fqMsg
 	}
 
 	if _, err := s.udpListener.WriteToUDP(raw, reqUaddr); err != nil {
 		return err
 	}
-	if len(use.ARecords) > 0 && s.cache != nil {
+	if len(useMsg.ARecords) > 0 && s.cache != nil {
 		// add to dns cache
-		s.cache.Add(dnsQuery.QDomain, raw, time.Now().Add(time.Second*time.Duration(use.ARecords[0].TTL)))
+		s.cache.Add(dnsQuery.QDomain, raw, time.Now().Add(time.Second*time.Duration(useMsg.ARecords[0].TTL)))
 	}
 
 	return nil
