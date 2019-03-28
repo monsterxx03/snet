@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"strings"
 )
 
@@ -75,6 +76,40 @@ func (m *DNSMsg) IsQuery() bool {
 
 func (m *DNSMsg) IsAnswer() bool {
 	return m.qr == 1
+}
+
+func (m *DNSMsg) Equal(t *DNSMsg) error {
+	if m.ID != t.ID {
+		return errors.New("dns id not match")
+	}
+	if m.qr != t.qr {
+		return errors.New("dns qr not match")
+	}
+	if m.QDCount != t.QDCount {
+		return errors.New("dns qdcount not match")
+	}
+	if m.ANCount != t.ANCount {
+		return errors.New("dns ancount not match")
+	}
+	if m.QDomain != t.QDomain {
+		return errors.New("dns qdomain not match")
+	}
+	if m.QType != t.QType {
+		return errors.New("dns qtype not match")
+	}
+	if m.QClass != t.QClass {
+		return errors.New("dns qclass not match")
+	}
+	if len(m.ARecords) != len(t.ARecords) {
+		return errors.New("a records number not match")
+	}
+	for i, s := range m.ARecords {
+		t := t.ARecords[i]
+		if !reflect.DeepEqual(s, t) {
+			return fmt.Errorf("%dst A record not match", i)
+		}
+	}
+	return nil
 }
 
 func NewDNSMsg(data []byte) (*DNSMsg, error) {

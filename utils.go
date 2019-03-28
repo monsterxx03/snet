@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	exec "os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -15,4 +17,12 @@ func Sh(cmds ...string) (result string, err error) {
 		return string(output), err
 	}
 	return string(output), nil
+}
+
+func printBytes(data []byte) {
+	debug := []string{}
+	for _, b := range data {
+		debug = append(debug, strconv.Itoa(int(b)))
+	}
+	fmt.Println("[", strings.Join(debug, ","), "]")
 }
