@@ -13,6 +13,7 @@ const (
 	dnsPort      = 53
 	resolverFile = "/etc/resolv.conf"
 	dnsTimeout   = 5
+	cacheSize    = 5000
 )
 
 type DNS struct {
@@ -22,6 +23,7 @@ type DNS struct {
 	fqDNS            string
 	originalResolver []byte
 	ipchecker        *IPChecker
+	cache            *LRU
 }
 
 func NewDNS(laddr, cnDNS, fqDNS string) (*DNS, error) {
@@ -33,11 +35,16 @@ func NewDNS(laddr, cnDNS, fqDNS string) (*DNS, error) {
 	if err != nil {
 		return nil, err
 	}
+	cache, err := NewLRU(cacheSize)
+	if err != nil {
+		return nil, err
+	}
 	return &DNS{
 		udpAddr:   uaddr,
 		cnDNS:     cnDNS,
 		fqDNS:     fqDNS,
 		ipchecker: ipchecker,
+		cache:     cache,
 	}, nil
 }
 
@@ -80,6 +87,14 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if err != nil {
 		return err
 	}
+	cachedResp := s.cache.Get(dnsQuery.QDomain)
+	if cachedResp != nil {
+		// TODO rewrite ip field
+		if _, err := s.udpListener.WriteToUDP(cachedResp.([]byte), reqUaddr); err != nil {
+			return err
+		}
+		return nil
+	}
 	wg.Add(2)
 	go func(data []byte) {
 		defer wg.Done()
@@ -110,17 +125,23 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	}
 	LOG.Debug("fq", dnsFQ)
 	LOG.Debug("cn", dnsCN)
-	var result []byte
+	var raw []byte
+	use := dnsCN
 	if len(dnsCN.ARecords) >= 1 && s.ipchecker.InChina(dnsCN.ARecords[0].IP) {
 		// if cn dns have response and it's an cn ip, we think it's a site in China
-		result = cnResp
+		raw = cnResp
 	} else {
 		// use fq dns's response for all ip outside of China
-		result = fqResp
+		raw = fqResp
+		use = dnsFQ
 	}
 
-	if _, err := s.udpListener.WriteToUDP(result, reqUaddr); err != nil {
+	if _, err := s.udpListener.WriteToUDP(raw, reqUaddr); err != nil {
 		return err
+	}
+	if len(use.ARecords) > 0 {
+		// add to cache
+		s.cache.Add(dnsQuery.QDomain, raw, time.Now().Add(time.Second*time.Duration(use.ARecords[0].TTL)))
 	}
 
 	return nil
