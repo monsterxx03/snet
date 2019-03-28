@@ -29,7 +29,8 @@ var ssPort = flag.Int("ss-port", DefaultSSPort, "ss sever's port")
 var ssCphierMethod = flag.String("ss-chpier-method", DefaultChpierMethod, "ss server's auth mnethod")
 var ssPasswd = flag.String("ss-passwd", "", "ss server's password")
 var cnDNS = flag.String("cn-dns", DefaultCNDNS, "dns server in China")
-var fqDNS = flag.String("fq-dns", DefaultFQDNS, "dns server not in China")
+var fqDNS = flag.String("fq-dns", DefaultFQDNS, "dns server out of China")
+var enableDNSCache = flag.Bool("enable-dns-cache", true, "cache dns query result based on ttl")
 var verbose = flag.Bool("v", false, "verbose logging")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 
@@ -71,6 +72,7 @@ func main() {
 		ssPasswd = &config.SSPasswd
 		cnDNS = &config.CNDNS
 		fqDNS = &config.FQDNS
+		enableDNSCache = &config.EnableDNSCache
 	}
 
 	if *ssPasswd == "" {
@@ -98,7 +100,7 @@ func main() {
 	addr := fmt.Sprintf("%s:%d", *lHost, *lPort)
 	exitOnError(ipchain.RedirectDNS(addr, *cnDNS))
 
-	dns, err := NewDNS(addr, *cnDNS, *fqDNS)
+	dns, err := NewDNS(addr, *cnDNS, *fqDNS, *enableDNSCache)
 	exitOnError(err)
 	go func() {
 		errCh <- dns.Run()

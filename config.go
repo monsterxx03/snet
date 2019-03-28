@@ -14,6 +14,7 @@ type Config struct {
 	SSPasswd       string `json:"ss-passwd"`
 	CNDNS          string `json:"cn-dns"`
 	FQDNS          string `json:"fq-dns"`
+	EnableDNSCache bool   `json:"enable-dns-cache"`
 }
 
 func LoadConfig(configPath string) (*Config, error) {

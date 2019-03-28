@@ -3,17 +3,15 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"sync"
 	"time"
 )
 
 const (
-	dnsPort      = 53
-	resolverFile = "/etc/resolv.conf"
-	dnsTimeout   = 5
-	cacheSize    = 5000
+	dnsPort    = 53
+	dnsTimeout = 5
+	cacheSize  = 5000
 )
 
 type DNS struct {
@@ -26,7 +24,7 @@ type DNS struct {
 	cache            *LRU
 }
 
-func NewDNS(laddr, cnDNS, fqDNS string) (*DNS, error) {
+func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -35,9 +33,12 @@ func NewDNS(laddr, cnDNS, fqDNS string) (*DNS, error) {
 	if err != nil {
 		return nil, err
 	}
-	cache, err := NewLRU(cacheSize)
-	if err != nil {
-		return nil, err
+	var cache *LRU
+	if enableCache {
+		cache, err = NewLRU(cacheSize)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &DNS{
 		udpAddr:   uaddr,
@@ -79,7 +80,6 @@ func (s *DNS) Shutdown() error {
 }
 
 func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
-	// TODO add cache for dns query based on TTL
 	var wg sync.WaitGroup
 	var cnResp []byte
 	var fqResp []byte
@@ -87,13 +87,19 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if err != nil {
 		return err
 	}
-	cachedResp := s.cache.Get(dnsQuery.QDomain)
-	if cachedResp != nil {
-		// TODO rewrite ip field
-		if _, err := s.udpListener.WriteToUDP(cachedResp.([]byte), reqUaddr); err != nil {
-			return err
+	if s.cache != nil {
+		cachedResp := s.cache.Get(dnsQuery.QDomain)
+		if cachedResp != nil {
+			LOG.Debug("dns cache hit:", dnsQuery.QDomain)
+			resp := cachedResp.([]byte)
+			// rewrite first 2 bytes(dns id)
+			resp[0] = data[0]
+			resp[1] = data[1]
+			if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
+				return err
+			}
+			return nil
 		}
-		return nil
 	}
 	wg.Add(2)
 	go func(data []byte) {
@@ -139,8 +145,8 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if _, err := s.udpListener.WriteToUDP(raw, reqUaddr); err != nil {
 		return err
 	}
-	if len(use.ARecords) > 0 {
-		// add to cache
+	if len(use.ARecords) > 0 && s.cache != nil {
+		// add to dns cache
 		s.cache.Add(dnsQuery.QDomain, raw, time.Now().Add(time.Second*time.Duration(use.ARecords[0].TTL)))
 	}
 
@@ -153,26 +159,6 @@ func (s *DNS) parse(data []byte) (*DNSMsg, error) {
 		return nil, err
 	}
 	return msg, nil
-}
-
-func (s *DNS) updateResolverFile() error {
-	var err error
-	s.originalResolver, err = ioutil.ReadFile(resolverFile)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(resolverFile, []byte("nameserver 127.0.0.1\n"), 0644)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *DNS) restoreResolverFile() error {
-	if err := ioutil.WriteFile(resolverFile, s.originalResolver, 0644); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (s *DNS) queryCN(data []byte) ([]byte, error) {
