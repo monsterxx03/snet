@@ -1,79 +1,68 @@
+// ipset BYPASS_SNET:
+// reversed ips + china ips + upstream ss ip + cn dns ip
+//
+// iptables -t nat -N SNET
+// iptables -t nat -A SNET -m set --match-set BYPASS_SNET dst -j RETURN
+// iptables -t nat -A SNET -p tcp -j REDIRECT --to-ports 1111
+// iptables -t nat -A OUTPUT -p tcp -j SNET
+// For local
+// iptables -t nat -A SNET -d 114.114.114.114 -j RETURN
+// iptables -t nat -A SNET -p udp --dport 53 -j DNAT --to-destination 127.0.0.1:1111
+// iptables -t nat -A OUTPUT -p udp --dport 53 -j SNET
+// For router
+// iptables -t nat -I PREROUTING -p tcp -j SNET
+// iptables -t nat -I PREROUTING -p udp --dport 53 -j REDIRECT --to-port 1111
+//
 package main
 
 import (
+	"fmt"
 	"strconv"
 )
 
 const (
 	SnetChainName = "SNET"
+	ModeLocal     = "local"
+	ModeRouter    = "router"
 )
 
-type SNETChain struct {
-	Name string
-}
+func setupIptableRules(mode string, snetHost string, snetPort int, cnDNS string, bypassSetName string) error {
+	cleanIptableRules(mode, snetHost, snetPort, bypassSetName)
+	port := strconv.Itoa(snetPort)
+	Sh("iptables -t nat -N", SnetChainName)
+	Sh("iptables -t nat -A ", SnetChainName, "-p tcp -m set --match-set", bypassSetName, "dst -j RETURN")
+	Sh("iptables -t nat -A ", SnetChainName, "-p tcp -j REDIRECT --to-ports", port)
+	Sh("iptables -t nat -A OUTPUT -p tcp -j", SnetChainName)
+	if mode == ModeLocal {
+		// avoid outgoing cn dns query be redirected to snet, it's a loop!
+		Sh("iptables -t nat -A", SnetChainName, "-d", cnDNS, "-j RETURN")
+		// redirect all outgoing dns query to snet(except cn dns)
+		Sh("iptables -t nat -A", SnetChainName, "-p udp --dport 53 -j DNAT --to-destination", snetHost+":"+port)
 
-func NewSNETChain() *SNETChain {
-	return &SNETChain{
-		Name: SnetChainName,
+		Sh("iptables -t nat -A OUTPUT -p udp --dport 53 -j", SnetChainName)
 	}
-}
-
-// Init setup some a SNET chain, it will capture all tcp & dns traffic.
-func (t *SNETChain) Init() error {
-	if _, err := Sh("iptables -t nat -N", t.Name); err != nil {
-		LOG.Err("Failed to create iptable chain", t.Name)
-		return err
-	}
-	// let snet chain handle all tcp traffic
-	if _, err := Sh("iptables -t nat -A OUTPUT -p tcp -j", t.Name); err != nil {
-		return err
-	}
-	// let snet chain handle all udp dns query
-	if _, err := Sh("iptables -t nat -A OUTPUT -p udp --dport 53 -j", t.Name); err != nil {
-		return err
+	if mode == ModeRouter {
+		Sh("iptables -t nat -I PREROUTING -p tcp -j", SnetChainName)
+		Sh("iptables -t nat -I PREROUTING -p udp --dport 53 -j REDIRECT --to-port", port)
 	}
 	return nil
 }
 
-func (t *SNETChain) addRule(rule string) error {
-	if _, err := Sh("iptables -t nat -A", t.Name, rule); err != nil {
-		return err
+func cleanIptableRules(mode string, snetHost string, snetPort int, bypassSetName string) error {
+	if mode != ModeLocal && mode != ModeRouter {
+		return fmt.Errorf("Invalid mode %s", mode)
 	}
+	port := strconv.Itoa(snetPort)
+	Sh("iptables -t nat -D OUTPUT -p tcp -j ", SnetChainName)
+	if mode == ModeLocal {
+		Sh("iptables -t nat -D", SnetChainName, "-p  udp --dport 53 -j DNAT --to-destination", snetHost+":"+port)
+		Sh("iptables -t nat -D OUTPUT -p udp --dport 53 -j", SnetChainName)
+	}
+	if mode == ModeRouter {
+		Sh("iptables -t nat -D PREROUTING -p tcp -j", SnetChainName)
+		Sh("iptables -t nat -D PREROUTING -p udp --dport 53 -j REDIRECT --to-port", port)
+	}
+	Sh("iptables -t nat -F", SnetChainName)
+	Sh("iptables -t nat -X", SnetChainName)
 	return nil
-}
-
-// BypassIPSet will set rule to bypass tcp redirect for some ip ranges.
-func (t *SNETChain) BypassIPSet(set *IPSet) error {
-	if err := t.addRule("-p tcp -m set --match-set " + set.Name + " dst -j RETURN"); err != nil {
-		return err
-	}
-	return nil
-}
-
-// RedirectTCP will redirect all out going tcp traffic to snet's tcp port
-func (t *SNETChain) RedirectTCP(tgtPort int) error {
-	if err := t.addRule("-p tcp -j REDIRECT --to-ports " + strconv.Itoa(tgtPort)); err != nil {
-		return err
-	}
-	return nil
-}
-
-// RedirectDNS will redirect all udp dns query to snet's udp port, but bypass cn dns
-func (t *SNETChain) RedirectDNS(localListenAddr, cnDNS string) error {
-	// bypass cn dns, otherwise will dns query will be in loop
-	if err := t.addRule("-d " + cnDNS + " -j RETURN"); err != nil {
-		return err
-	}
-	// redirect output dns query to snet's udp port
-	if err := t.addRule("-p udp --dport 53 -j DNAT --to-destination " + localListenAddr); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *SNETChain) Destroy() {
-	Sh("iptables -t nat -D OUTPUT -p tcp -j", t.Name)
-	Sh("iptables -t nat -D OUTPUT -p udp --dport 53 -j", t.Name)
-	Sh("iptables -t nat -F", t.Name)
-	Sh("iptables -t nat -X", t.Name)
 }

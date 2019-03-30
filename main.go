@@ -19,6 +19,7 @@ const (
 	DefaultSSPort       = 8080
 	DefaultCNDNS        = "114.114.114.114"
 	DefaultFQDNS        = "8.8.8.8"
+	DefaultMode         = "local"
 )
 
 var configFile = flag.String("config", "", "json cofig file path")
@@ -31,11 +32,11 @@ var ssPasswd = flag.String("ss-passwd", "", "ss server's password")
 var cnDNS = flag.String("cn-dns", DefaultCNDNS, "dns server in China")
 var fqDNS = flag.String("fq-dns", DefaultFQDNS, "dns server out of China")
 var enableDNSCache = flag.Bool("enable-dns-cache", true, "cache dns query result based on ttl")
+var mode = flag.String("mode", DefaultMode, "local or router")
 var verbose = flag.Bool("v", false, "verbose logging")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 
 var LOG *Logger
-var ipchain *SNETChain
 
 func main() {
 	flag.Parse()
@@ -52,13 +53,6 @@ func main() {
 
 	ipset, err := NewIPSet()
 	exitOnError(err)
-	ipchain = NewSNETChain()
-
-	if *clean {
-		ipchain.Destroy()
-		ipset.Destroy()
-		os.Exit(1)
-	}
 
 	config := &Config{}
 	if *configFile != "" {
@@ -73,6 +67,15 @@ func main() {
 		cnDNS = &config.CNDNS
 		fqDNS = &config.FQDNS
 		enableDNSCache = &config.EnableDNSCache
+		if config.Mode != "" {
+			mode = &config.Mode
+		}
+	}
+
+	if *clean {
+		cleanIptableRules(*mode, *lHost, *lPort, setName)
+		ipset.Destroy()
+		os.Exit(0)
 	}
 
 	if *ssPasswd == "" {
@@ -89,17 +92,11 @@ func main() {
 	errCh := make(chan error)
 
 	// order is important
-	ipchain.Destroy()
-	ipset.Destroy()
 	exitOnError(ipset.Init())
 	exitOnError(ipset.Bypass(ssIP))
+	setupIptableRules(*mode, *lHost, *lPort, *cnDNS, setName)
 
-	exitOnError(ipchain.Init())
-	exitOnError(ipchain.BypassIPSet(ipset))
-	exitOnError(ipchain.RedirectTCP(*lPort))
 	addr := fmt.Sprintf("%s:%d", *lHost, *lPort)
-	exitOnError(ipchain.RedirectDNS(addr, *cnDNS))
-
 	dns, err := NewDNS(addr, *cnDNS, *fqDNS, *enableDNSCache)
 	exitOnError(err)
 	go func() {
@@ -119,7 +116,7 @@ func main() {
 	if err := <-errCh; err != nil {
 		LOG.Err(err)
 	}
-	ipchain.Destroy()
+	cleanIptableRules(*mode, *lHost, *lPort, setName)
 	ipset.Destroy()
 
 	if err := dns.Shutdown(); err != nil {

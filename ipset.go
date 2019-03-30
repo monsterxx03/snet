@@ -42,6 +42,7 @@ func NewIPSet() (*IPSet, error) {
 
 // Init will create a bypass ipset, and config iptables to RETURN traffic in this set.
 func (s *IPSet) Init() error {
+	s.Destroy()
 	result := make([]string, 0, len(s.bypassCidrs)+1)
 	result = append(result, "create "+s.Name+" hash:net family inet hashsize 1024 maxelem 65536")
 	for _, route := range s.bypassCidrs {

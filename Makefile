@@ -15,3 +15,6 @@ update:
 
 test:
 	go test
+
+build_hiwifi:
+	GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build

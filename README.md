@@ -6,14 +6,15 @@ It's a solution like: redsocks +  ss + ChinaDNS. But all in one binary, don't de
 ## Features
 
 - SS as upstream server
-- Sytemwide tcp proxy (via iptables redirect)
+- Sytemwide tcp proxy (via iptables redirect) on linux desktop/server
+- Works on openwrt router.
 - Bypass traffic in China
 - Handle DNS in the way like ChinaDNS, so website have CDN out of China won't be redirected to their overseas site.
 - Local DNS cache based on TTL.
 
 ## Limation:
 
-- linux only (tested on ubuntu 18.04 & manjaro)
+- linux only (tested on ubuntu 18.04 & manjaro && openwrt)
 - tcp only (but dns is handled)
 - ipv4 only
 - only support ss as upstream server
@@ -33,7 +34,8 @@ Example config.json:
         "ss-passwd": "passwd",
         "cn-dns": "114.114.114.114",  # dns in China
         "fq-dns": "8.8.8.8",  # clean dns out of China
-        "enable-dns-cache": true
+        "enable-dns-cache": true,
+        "mode": "local" 
     }
 
 Since `snet` will modify iptables, root privilege is required. 
@@ -42,8 +44,10 @@ Since `snet` will modify iptables, root privilege is required.
 
 test:
 
-- go to `ip.cn`, ip should be your ss server ip (since ip.cn use CloudFlare CDN which is out of China)
+- go to `whatsmyip.com`, ip should be your ss server ip.
 - go to `myip.ipip.net`, ip should be your local ip in China.
+
+If you want to use it on openwrt, change `mode` to `router`.
 
 ## Notice
 
