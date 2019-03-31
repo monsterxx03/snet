@@ -73,4 +73,4 @@ If it's first nameserver, dns query will bypass `snet`(since I didn't handle ipv
 ## TODO:
 
 - Filter by domain.
-- Upstream server loadbalancing
+- Stats api
