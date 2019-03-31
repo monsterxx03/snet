@@ -1,11 +1,11 @@
 language: golang
 go:
--1.12.x
+  -1.12.x
 jobs:
-    include:
-        - stage: unit tests
-          script: make test
-        - stage: build
-          script: make build 
-        - stage: github release 
-          script: echo "test github release"
+  include:
+    - stage: unit tests
+      script: make test
+    - stage: build
+      script: make build 
+    - stage: github release 
+      script: echo "test github release"
