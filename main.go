@@ -22,6 +22,11 @@ const (
 	DefaultMode         = "local"
 )
 
+var (
+	sha1Ver string
+	buildAt string
+)
+
 var configFile = flag.String("config", "", "json cofig file path")
 var lHost = flag.String("listen-host", DefaultLHost, "address to listen")
 var lPort = flag.Int("listen-port", DefaultLPort, "port to listen")
@@ -34,12 +39,20 @@ var fqDNS = flag.String("fq-dns", DefaultFQDNS, "dns server out of China")
 var enableDNSCache = flag.Bool("enable-dns-cache", true, "cache dns query result based on ttl")
 var mode = flag.String("mode", DefaultMode, "local or router")
 var verbose = flag.Bool("v", false, "verbose logging")
+var version = flag.Bool("version", false, "print version only")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 
 var LOG *Logger
 
 func main() {
 	flag.Parse()
+
+	if *version {
+		fmt.Printf("Git: %s\n", sha1Ver)
+		fmt.Printf("Build at: %s\n", buildAt)
+		fmt.Printf("Chnroutes updated at: %s\n", ChnroutesTS)
+		os.Exit(0)
+	}
 
 	var logLevel LogLevel
 	var err error

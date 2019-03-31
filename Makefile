@@ -1,9 +1,7 @@
 all: build 
 
 build:
-	go generate
-	go fmt
-	go build -o bin/snet
+	go build -ldflags "-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%dT%T%z'`" -o bin/snet
 
 run:
 	sudo ./bin/snet -ss-passwd abc
