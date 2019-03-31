@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/monsterxx03/snet.svg?branch=master)](https://travis-ci.com/monsterxx03/snet)
+
 # SNET
 
 It's a solution like: redsocks +  ss + ChinaDNS. But all in one binary, don't depend on dnsmasq.
