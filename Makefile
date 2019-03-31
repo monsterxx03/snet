@@ -12,6 +12,7 @@ update:
 	go fmt
 
 test:
+	go get .
 	go test
 
 build_hiwifi:
