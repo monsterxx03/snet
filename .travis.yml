@@ -3,12 +3,9 @@ go:
 - 1.12.1
 env:
 - GO111MODULE=on
-jobs:
-  include:
-  - stage: unit tests
-    script: make test
-  - stage: build
-    script: make build
+script:
+- make test
+- make build
 deploy:
   provider: releases
   api_key:
