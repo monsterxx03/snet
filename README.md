@@ -2,7 +2,7 @@
 
 # SNET
 
-It's a solution like: redsocks +  ss + ChinaDNS. But all in one binary, don't depend on dnsmasq.
+It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one binary, don't depend on dnsmasq.
 
 
 ## Features
@@ -49,7 +49,7 @@ test:
 - go to `whatsmyip.com`, ip should be your ss server ip.
 - go to `myip.ipip.net`, ip should be your local ip in China.
 
-If you want to use it on openwrt, change `mode` to `router`.
+If you want to use it on openwrt, change `mode` to `router`, and listen-host should be your router's ip or `0.0.0.0`
 
 ## Notice
 
