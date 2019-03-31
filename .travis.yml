@@ -1,11 +1,18 @@
 language: go
 go:
-  - 1.12.1
+- 1.12.1
+env:
+- GO111MODULE=on
 jobs:
   include:
-    - stage: unit tests
-      script: make test
-    - stage: build
-      script: make build 
-    - stage: github release 
-      script: echo "test github release"
+  - stage: unit tests
+    script: make test
+  - stage: build
+    script: make build
+deploy:
+  provider: releases
+  api_key:
+    secure: VicMCPCgFsqjDsV2RQmvtEn3XB3hYSCNOAcqzkNDlnbSisrQSoeXySuLmBXTUtbLjT7FxyHt/aY2nQ6sRtbB32Lrgir6Tax8F/yDOib8Gb2yhweS+ho0erIa5Puyx/JUl0Xu6WjACDFcjuC43hL2RTn0jTdefW2jj0NSTH6F7eAt+4yVylJ4gYsJrp164jMCfLK4ILqE9RM1H4/BfMjsr7E1wlkpB56XFTYxzqwcpfhIAXEPiAxN7W5W+H7oHjj4XFqnjckFf3m5+IkK9/T2I2E1ss7jCIithtT5nZsAAtAn5bGROc2I7NnUuta8Rs/cSmysCmWaNuUpaALtu4Zt2Udgf6sio3QkmaMQhTiNyxlUIvzKnVvuyJdLBBcSRs6hqUGPdmCAWDt+yAJocvIwPO3X5GCKtMglPjaDGMvtNLy9haDxMel3oP73eIfOoSyOi44lWczaGyP+t7JmEG/pKZFv3I/DP624vBZjlR28VA/v9jSUbHXAPIrRKYUAtM09VHXycHyqAjmb76MNdwjjRkyVX/JCJaZeQOnIi7LhkJ97T4pUUhl5h5kcke8SC9BdHDXd0OY1SY0KF1o8aS8YfgJJOprjcmQeS/eh7GF5lPm+Xe4mm5DSM/sHGjfVuqXsRz1iP3DI2cj9/7FSG9Xx77pf1QDZzhapcxijwTOTSVo=
+  file: bin/snet
+  on:
+    repo: monsterxx03/snet
