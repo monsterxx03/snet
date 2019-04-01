@@ -101,7 +101,9 @@ func main() {
 	ips, err := net.LookupIP(*ssHost)
 	exitOnError(err)
 	ssIP := ips[0].String()
-	s, err := NewServer(*lHost, *lPort, ssIP, *ssPort, *ssCphierMethod, *ssPasswd)
+	s, err := NewTCPServer(*lHost, *lPort, ssIP, *ssPort, *ssCphierMethod, *ssPasswd)
+	exitOnError(err)
+	us, err := NewUDPServer(*lHost, *lPort)
 	exitOnError(err)
 	errCh := make(chan error)
 
@@ -119,6 +121,9 @@ func main() {
 
 	go func() {
 		errCh <- s.Run()
+	}()
+	go func() {
+		errCh <- us.Run()
 	}()
 	go func() {
 		c := make(chan os.Signal, 1)
