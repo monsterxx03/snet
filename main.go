@@ -142,7 +142,10 @@ func main() {
 		LOG.Err("Error during shutdown dns server", err)
 	}
 	if err := s.Shutdown(); err != nil {
-		LOG.Err("Error during shutdown server", err)
+		LOG.Err("Error during shutdown tcp server", err)
+	}
+	if err := us.Shutdown(); err != nil {
+		LOG.Err("Error during shutdown udp server", err)
 	}
 }
 

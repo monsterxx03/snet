@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	ss "github.com/shadowsocks/shadowsocks-go/shadowsocks"
 	"net"
@@ -133,31 +135,61 @@ func (s *UDPServer) Run() error {
 	lc := net.ListenConfig{
 		Control: func(network string, addr string, c syscall.RawConn) error {
 			var opErr error
-			err := c.Control(func(fd uintptr) {
+			if err := c.Control(func(fd uintptr) {
 				opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_IP, syscall.IP_TRANSPARENT, 1)
-			})
-			if err != nil {
+			}); err != nil {
 				return err
 			}
-			fmt.Println("IP_TRANSPARENT set!")
+			if opErr != nil {
+				return opErr
+			}
+			if err := c.Control(func(fd uintptr) {
+				opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_IP, syscall.IP_RECVORIGDSTADDR, 1)
+			}); err != nil {
+				return err
+			}
 			return opErr
 		}}
 	lp, err := lc.ListenPacket(context.Background(), "udp", addr)
-	conn := lp.(*net.UDPConn)
 	if err != nil {
 		return err
 	}
+	conn := lp.(*net.UDPConn)
 	for {
-		b := make([]byte, 100)
-		_, _, err := conn.ReadFromUDP(b)
-		f, err := conn.File()
+		// From https://github.com/LiamHaworth/go-tproxy/blob/master/tproxy_udp.go
+		b := make([]byte, 1024)
+		oob := make([]byte, 1024)
+		n, oobn, _, _, err := conn.ReadMsgUDP(b, oob)
 		if err != nil {
 			return err
 		}
-		fd := f.Fd()
-		fmt.Println(fd)
+		msgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
 		if err != nil {
 			return err
 		}
+		var orgDstAddr *net.UDPAddr
+		for _, msg := range msgs {
+			if msg.Header.Level == syscall.SOL_IP && msg.Header.Type == syscall.IP_RECVORIGDSTADDR {
+				orgDstAddrRaw := &syscall.RawSockaddrInet4{}
+				if err = binary.Read(bytes.NewReader(msg.Data), binary.LittleEndian, orgDstAddrRaw); err != nil {
+					return err
+				}
+				addrBytes := orgDstAddrRaw.Addr
+				port := orgDstAddrRaw.Port
+				orgDstAddr = &net.UDPAddr{
+					IP:   net.IPv4(addrBytes[0], addrBytes[1], addrBytes[2], addrBytes[3]),
+					Port: int((port&0xff)<<8 + port>>8), // swap lower byte and high byte
+				}
+			}
+		}
+		if orgDstAddr == nil {
+			return fmt.Errorf("Failed to get original udp dst addr")
+		}
+		fmt.Println("original udp dst addr:", orgDstAddr)
+		fmt.Println("receved data:", b[:n])
 	}
+}
+
+func (s *UDPServer) Shutdown() error {
+	return nil
 }
