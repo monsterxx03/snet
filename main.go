@@ -84,9 +84,10 @@ func main() {
 			mode = &config.Mode
 		}
 	}
+	dnsPort := *lPort + 100
 
 	if *clean {
-		cleanIptableRules(*mode, *lHost, *lPort, setName)
+		cleanIptableRules(*mode, *lHost, *lPort, dnsPort, setName)
 		ipset.Destroy()
 		os.Exit(0)
 	}
@@ -107,9 +108,9 @@ func main() {
 	// order is important
 	exitOnError(ipset.Init())
 	exitOnError(ipset.Bypass(ssIP))
-	setupIptableRules(*mode, *lHost, *lPort, *cnDNS, setName)
+	setupIptableRules(*mode, *lHost, *lPort, dnsPort, *cnDNS, setName)
 
-	addr := fmt.Sprintf("%s:%d", *lHost, *lPort)
+	addr := fmt.Sprintf("%s:%d", *lHost, dnsPort)
 	dns, err := NewDNS(addr, *cnDNS, *fqDNS, *enableDNSCache)
 	exitOnError(err)
 	go func() {
@@ -129,7 +130,7 @@ func main() {
 	if err := <-errCh; err != nil {
 		LOG.Err(err)
 	}
-	cleanIptableRules(*mode, *lHost, *lPort, setName)
+	cleanIptableRules(*mode, *lHost, *lPort, dnsPort, setName)
 	ipset.Destroy()
 
 	if err := dns.Shutdown(); err != nil {
