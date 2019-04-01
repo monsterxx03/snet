@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	ss "github.com/shadowsocks/shadowsocks-go/shadowsocks"
 	"net"
@@ -11,28 +12,28 @@ const (
 	SO_ORIGINAL_DST = 80 // /usr/includ/linux/netfilter_ipv4.h
 )
 
-type Server struct {
-	lHost    string
-	lPort    int
-	listener *net.TCPListener
-	ss       *SSServer
-}
-
 type SSServer struct {
 	Host   string
 	Port   int
 	cipher *ss.Cipher
 }
 
-func (s *Server) Dial(tgtAddr string) (*ss.Conn, error) {
+type TCPServer struct {
+	lHost    string
+	lPort    int
+	listener *net.TCPListener
+	ss       *SSServer
+}
+
+func (s *TCPServer) Dial(tgtAddr string) (*ss.Conn, error) {
 	return ss.Dial(tgtAddr, fmt.Sprintf("%s:%d", s.ss.Host, s.ss.Port), s.ss.cipher.Copy())
 }
 
-func (s *Server) Pipe(src, dst net.Conn) {
+func (s *TCPServer) Pipe(src, dst net.Conn) {
 	ss.PipeThenClose(src, dst, nil)
 }
 
-func NewServer(lHost string, lPort int, ssHost string, ssPort int, ssCphierMethod string, ssPasswd string) (*Server, error) {
+func NewTCPServer(lHost string, lPort int, ssHost string, ssPort int, ssCphierMethod string, ssPasswd string) (*TCPServer, error) {
 	addr := fmt.Sprintf("%s:%d", lHost, lPort)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -49,7 +50,7 @@ func NewServer(lHost string, lPort int, ssHost string, ssPort int, ssCphierMetho
 		Port:   ssPort,
 		cipher: cipher,
 	}
-	return &Server{
+	return &TCPServer{
 		lHost:    lHost,
 		lPort:    lPort,
 		listener: ln.(*net.TCPListener),
@@ -57,7 +58,7 @@ func NewServer(lHost string, lPort int, ssHost string, ssPort int, ssCphierMetho
 	}, nil
 }
 
-func (s *Server) Run() error {
+func (s *TCPServer) Run() error {
 	for {
 		conn, err := s.listener.AcceptTCP()
 		if err != nil {
@@ -72,7 +73,7 @@ func (s *Server) Run() error {
 	}
 }
 
-func (s *Server) HandleConn(conn *net.TCPConn) error {
+func (s *TCPServer) HandleConn(conn *net.TCPConn) error {
 	dstHost, dstPort, err := getDst(conn)
 	if err != nil {
 		return err
@@ -86,7 +87,7 @@ func (s *Server) HandleConn(conn *net.TCPConn) error {
 	return nil
 }
 
-func (s *Server) Shutdown() error {
+func (s *TCPServer) Shutdown() error {
 	return s.listener.Close()
 }
 
@@ -97,10 +98,7 @@ func getDst(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
 	}
 	// f is a copy of tcp connection's underlying fd, close it won't affect current connection
 	defer f.Close()
-	fd := f.Fd() // returned fd is in blocking mode
-	if err := syscall.SetNonblock(int(fd), true); err != nil {
-		return "", -1, err
-	}
+	fd := f.Fd() // from go1.11 returned fd is no longer in blocking mode
 	addr, err := syscall.GetsockoptIPv6Mreq(int(fd), syscall.IPPROTO_IP, SO_ORIGINAL_DST)
 	if err != nil {
 		return "", -1, err
@@ -114,4 +112,52 @@ func getDst(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
 		addr.Multiaddr[7],
 	)
 	return host, int(addr.Multiaddr[2])<<8 + int(addr.Multiaddr[3]), err
+}
+
+type UDPServer struct {
+	lHost string
+	lPort int
+}
+
+func NewUDPServer(lHost string, lPort int) (*UDPServer, error) {
+	return &UDPServer{
+		lHost: lHost,
+		lPort: lPort,
+	}, nil
+}
+
+func (s *UDPServer) Run() error {
+	addr := fmt.Sprintf("%s:%d", s.lHost, s.lPort)
+	LOG.Info("listen on udp:", addr)
+	// ListenConfig added in go 1.11
+	lc := net.ListenConfig{
+		Control: func(network string, addr string, c syscall.RawConn) error {
+			var opErr error
+			err := c.Control(func(fd uintptr) {
+				opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_IP, syscall.IP_TRANSPARENT, 1)
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Println("IP_TRANSPARENT set!")
+			return opErr
+		}}
+	lp, err := lc.ListenPacket(context.Background(), "udp", addr)
+	conn := lp.(*net.UDPConn)
+	if err != nil {
+		return err
+	}
+	for {
+		b := make([]byte, 100)
+		_, _, err := conn.ReadFromUDP(b)
+		f, err := conn.File()
+		if err != nil {
+			return err
+		}
+		fd := f.Fd()
+		fmt.Println(fd)
+		if err != nil {
+			return err
+		}
+	}
 }
