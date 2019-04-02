@@ -160,6 +160,7 @@ func (s *UDPServer) Run() error {
 		b := make([]byte, 1024)
 		oob := make([]byte, 1024)
 		n, oobn, _, _, err := conn.ReadMsgUDP(b, oob)
+		fmt.Println("got n", n)
 		if err != nil {
 			return err
 		}

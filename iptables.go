@@ -2,7 +2,7 @@
 // reversed ips + china ips + upstream ss ip + cn dns ip
 //
 // iptables -t nat -N SNET
-// iptables -t nat -A SNET -m set --match-set BYPASS_SNET dst -j RETURN
+// iptables -t nat -A SNET -p tcp -m set --match-set BYPASS_SNET dst -j RETURN
 // iptables -t nat -A SNET -p tcp -j REDIRECT --to-ports 1111
 // iptables -t nat -A OUTPUT -p tcp -j SNET
 // For local
@@ -13,6 +13,22 @@
 // iptables -t nat -I PREROUTING -p tcp -j SNET
 // iptables -t nat -I PREROUTING -p udp --dport 53 -j REDIRECT --to-port 1111
 //
+// For UDP
+// iptables -t mangle -N SNET
+// ip route add local default dev lo table 100
+// ip rule add fwmark 0x01/0x01 lookup 100
+// iptables -t mangle -A SNET --dport 53 -j RETURN
+// iptables -t mangle -A SNET -d 0.0.0.0/8 -j RETURN
+// iptables -t mangle -A SNET -d 10.0.0.0/8 -j RETURN
+// iptables -t mangle -A SNET -d 127.0.0.0/8 -j RETURN
+// iptables -t mangle -A SNET -d 169.254.0.0/16 -j RETURN
+// iptables -t mangle -A SNET -d 172.16.0.0/12 -j RETURN
+// iptables -t mangle -A SNET -d 192.168.0.0/16 -j RETURN
+// iptables -t mangle -A SNET -d 224.0.0.0/4 -j RETURN
+// iptables -t mangle -A SNET -d 240.0.0.0/4 -j RETURN
+// iptables -t mangle -A SNET -p udp -j TPROXY --on-port 1111 --on-ip 127.0.0.1 --tproxy-mark 0x01/0x01
+// iptables -t mangle -A PREROUTING -p udp -j SNET
+
 package main
 
 import (
