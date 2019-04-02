@@ -31,7 +31,7 @@ func setupIptableRules(mode string, snetHost string, snetPort int, dnsPort int, 
 	port := strconv.Itoa(snetPort)
 	dport := strconv.Itoa(dnsPort)
 	Sh("iptables -t nat -N", SnetChainName)
-	Sh("iptables -t nat -A ", SnetChainName, "-m set --match-set", bypassSetName, "dst -j RETURN")
+	Sh("iptables -t nat -A ", SnetChainName, "-p tcp -m set --match-set", bypassSetName, "dst -j RETURN")
 	Sh("iptables -t nat -A ", SnetChainName, "-p tcp -j REDIRECT --to-ports", port)
 	Sh("iptables -t nat -A OUTPUT -p tcp -j", SnetChainName)
 	if mode == ModeLocal {
