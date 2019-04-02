@@ -5,7 +5,7 @@
     "ss-port": 8080,
     "ss-chpier-method": "aes-256-cfb",
     "ss-passwd": "passwd",
-    "cn-dns": "114.114.114.114",
+    "cn-dns": "223.6.6.6",
     "fq-dns": "8.8.8.8",
     "enable-dns-cache": true,
     "mode": "local"

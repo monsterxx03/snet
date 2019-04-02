@@ -152,8 +152,13 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 		// continue to next label
 		body = body[offset:]
 	}
+	queryDomain := strings.Join(queryDomainLabels, ".")
 	arecords := []*ARecord{}
 	if isAnswer {
+		if len(body) == 0 {
+			return &DNSMsg{ID: id, QDCount: qdcount, ANCount: ancount, qr: 1,
+				QDomain: queryDomain, QType: RType(qtype), QClass: qclass, ARecords: arecords}, nil
+		}
 		// parse answer
 		if len(body) < 12 {
 			// at least Pointer(2) + Type(2) + Class(2) + TTL(4) + RLEN(2) = 12
@@ -198,7 +203,7 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 	return &DNSMsg{
 		ID: id, QDCount: qdcount, ANCount: ancount,
 		qr:      qr,
-		QDomain: strings.Join(queryDomainLabels, "."),
+		QDomain: queryDomain,
 		QType:   RType(qtype), QClass: qclass,
 		ARecords: arecords}, nil
 }

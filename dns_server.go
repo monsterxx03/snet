@@ -141,7 +141,6 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		raw = fqData
 		useMsg = fqMsg
 	}
-
 	if _, err := s.udpListener.WriteToUDP(raw, reqUaddr); err != nil {
 		return err
 	}

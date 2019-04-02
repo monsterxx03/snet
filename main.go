@@ -17,7 +17,7 @@ const (
 	DefaultChpierMethod = "aes-256-cfb"
 	DefaultSSHost       = ""
 	DefaultSSPort       = 8080
-	DefaultCNDNS        = "114.114.114.114"
+	DefaultCNDNS        = "223.6.6.6"
 	DefaultFQDNS        = "8.8.8.8"
 	DefaultMode         = "local"
 )
