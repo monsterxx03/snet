@@ -14,6 +14,7 @@ import (
 const (
 	DefaultLHost        = "127.0.0.1"
 	DefaultLPort        = 1111
+	DefaultProxyType    = "ss"
 	DefaultChpierMethod = "aes-256-cfb"
 	DefaultSSHost       = ""
 	DefaultSSPort       = 8080
@@ -43,6 +44,7 @@ var version = flag.Bool("version", false, "print version only")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 
 var LOG *Logger
+var ProxyType string = DefaultProxyType
 
 func main() {
 	flag.Parse()
@@ -80,10 +82,14 @@ func main() {
 		cnDNS = &config.CNDNS
 		fqDNS = &config.FQDNS
 		enableDNSCache = &config.EnableDNSCache
+		if config.ProxyType != "" {
+			ProxyType = config.ProxyType
+		}
 		if config.Mode != "" {
 			mode = &config.Mode
 		}
 	}
+
 	dnsPort := *lPort + 100
 
 	if *clean {
@@ -101,7 +107,7 @@ func main() {
 	ips, err := net.LookupIP(*ssHost)
 	exitOnError(err)
 	ssIP := ips[0].String()
-	s, err := NewServer(*lHost, *lPort, ssIP, *ssPort, *ssCphierMethod, *ssPasswd)
+	s, err := NewServer(config)
 	exitOnError(err)
 	errCh := make(chan error)
 

@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	ss "github.com/shadowsocks/shadowsocks-go/shadowsocks"
 	"net"
+	"snet/proxy"
 	"syscall"
 )
 
@@ -12,48 +12,31 @@ const (
 )
 
 type Server struct {
-	lHost    string
-	lPort    int
 	listener *net.TCPListener
-	ss       *SSServer
+	proxy    proxy.Proxy
 }
 
-type SSServer struct {
-	Host   string
-	Port   int
-	cipher *ss.Cipher
-}
-
-func (s *Server) Dial(tgtAddr string) (*ss.Conn, error) {
-	return ss.Dial(tgtAddr, fmt.Sprintf("%s:%d", s.ss.Host, s.ss.Port), s.ss.cipher.Copy())
-}
-
-func (s *Server) Pipe(src, dst net.Conn) {
-	ss.PipeThenClose(src, dst, nil)
-}
-
-func NewServer(lHost string, lPort int, ssHost string, ssPort int, ssCphierMethod string, ssPasswd string) (*Server, error) {
-	addr := fmt.Sprintf("%s:%d", lHost, lPort)
+func NewServer(c *Config) (*Server, error) {
+	addr := fmt.Sprintf("%s:%d", c.LHost, c.LPort)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 	LOG.Info("Listen on tcp:", addr)
 
-	cipher, err := ss.NewCipher(ssCphierMethod, ssPasswd)
 	if err != nil {
 		return nil, err
 	}
-	ssServer := &SSServer{
-		Host:   ssHost,
-		Port:   ssPort,
-		cipher: cipher,
+	p, err := proxy.Get(c.ProxyType)
+	if err != nil {
+		return nil, err
+	}
+	if err := p.Init(genConfigByType(c, c.ProxyType)); err != nil {
+		return nil, err
 	}
 	return &Server{
-		lHost:    lHost,
-		lPort:    lPort,
 		listener: ln.(*net.TCPListener),
-		ss:       ssServer,
+		proxy:    p,
 	}, nil
 }
 
@@ -77,12 +60,12 @@ func (s *Server) HandleConn(conn *net.TCPConn) error {
 	if err != nil {
 		return err
 	}
-	remoteConn, err := s.Dial(fmt.Sprintf("%s:%d", dstHost, dstPort))
+	remoteConn, err := s.proxy.Dial(dstHost, dstPort)
 	if err != nil {
 		return err
 	}
-	go s.Pipe(conn, remoteConn)
-	s.Pipe(remoteConn, conn)
+	go s.proxy.Pipe(conn, remoteConn)
+	s.proxy.Pipe(remoteConn, conn)
 	return nil
 }
 
