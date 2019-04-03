@@ -35,7 +35,22 @@ func LoadConfig(configPath string) (*Config, error) {
 		return nil, err
 	}
 	if config.ProxyType == "" {
-		return nil, errors.New("proxy-type required")
+		return nil, errors.New("missing proxy-type")
+	}
+	if config.LHost == "" {
+		config.LHost = DefaultLHost
+	}
+	if config.LPort == 0 {
+		config.LPort = DefaultLPort
+	}
+	if config.CNDNS == "" {
+		config.CNDNS = DefaultCNDNS
+	}
+	if config.FQDNS == "" {
+		config.FQDNS = DefaultFQDNS
+	}
+	if config.Mode == "" {
+		config.Mode = DefaultMode
 	}
 	return &config, nil
 }
