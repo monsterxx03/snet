@@ -5,24 +5,26 @@ import (
 	"errors"
 	"io/ioutil"
 	"snet/proxy"
+	http "snet/proxy/http"
 	ss "snet/proxy/ss"
 )
 
 type Config struct {
-	LHost          string `json:"listen-host"`
-	LPort          int    `json:"listen-port"`
-	ProxyType      string `json:"proxy-type"`
-	HttpProxyHost  string `json:"http-proxy-host"`
-	HttpProxyPort  string `json:"http-proxy-port"`
-	HttpProxyAuth  string `json:"http-proxy-auth"`
-	SSHost         string `json:"ss-host"`
-	SSPort         int    `json:"ss-port"`
-	SSCphierMethod string `json:"ss-chpier-method"`
-	SSPasswd       string `json:"ss-passwd"`
-	CNDNS          string `json:"cn-dns"`
-	FQDNS          string `json:"fq-dns"`
-	EnableDNSCache bool   `json:"enable-dns-cache"`
-	Mode           string `json:"mode"`
+	LHost                 string `json:"listen-host"`
+	LPort                 int    `json:"listen-port"`
+	ProxyType             string `json:"proxy-type"`
+	HttpProxyHost         string `json:"http-proxy-host"`
+	HttpProxyPort         int    `json:"http-proxy-port"`
+	HttpProxyAuthUser     string `json:"http-proxy-auth-user"`
+	HttpProxyAuthPassword string `json:"http-proxy-auth-password"`
+	SSHost                string `json:"ss-host"`
+	SSPort                int    `json:"ss-port"`
+	SSCphierMethod        string `json:"ss-chpier-method"`
+	SSPasswd              string `json:"ss-passwd"`
+	CNDNS                 string `json:"cn-dns"`
+	FQDNS                 string `json:"fq-dns"`
+	EnableDNSCache        bool   `json:"enable-dns-cache"`
+	Mode                  string `json:"mode"`
 }
 
 func LoadConfig(configPath string) (*Config, error) {
@@ -59,6 +61,8 @@ func genConfigByType(c *Config, proxyType string) proxy.Config {
 	switch proxyType {
 	case "ss":
 		return &ss.Config{Host: c.SSHost, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd}
+	case "http":
+		return &http.Config{Host: c.HttpProxyHost, Port: c.HttpProxyPort, AuthUser: c.HttpProxyAuthUser, AuthPassword: c.HttpProxyAuthPassword}
 	}
 	return nil
 }

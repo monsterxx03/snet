@@ -48,14 +48,14 @@ func (s *Server) Run() error {
 		}
 		go func(conn *net.TCPConn) {
 			defer conn.Close()
-			if err := s.HandleConn(conn); err != nil {
+			if err := s.handle(conn); err != nil {
 				LOG.Err(err)
 			}
 		}(conn)
 	}
 }
 
-func (s *Server) HandleConn(conn *net.TCPConn) error {
+func (s *Server) handle(conn *net.TCPConn) error {
 	dstHost, dstPort, err := getDst(conn)
 	if err != nil {
 		return err
