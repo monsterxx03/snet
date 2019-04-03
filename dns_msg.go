@@ -173,7 +173,7 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 				if c1 != 0 || c2 != 0 {
 					// Normal dns server's response NAME field always a pointer to existing data(NAME in QUESTION)
 					// if top 2 bytes not equal 0, it's an uncompressed msg.
-					return nil, errors.New("Maybe this dns server didn't compress response data?")
+					return nil, errors.New("Maybe this dns server didn't compress response data? domain:" + queryDomain)
 				}
 			case 0xC0:
 				atype := RType(binary.BigEndian.Uint16(body[:2]))

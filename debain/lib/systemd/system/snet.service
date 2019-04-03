@@ -1,0 +1,8 @@
+[Unit]
+Description=Systemwide SS proxy for linux
+
+[Service]
+ExecStart=/usr/local/bin/snet -config /etc/snet/config.json
+
+[Install]
+WantedBy=multi-user.target

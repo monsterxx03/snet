@@ -16,3 +16,6 @@ test:
 
 build_hiwifi:
 	GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build
+
+deb:
+	dpkg -b debain snet.deb

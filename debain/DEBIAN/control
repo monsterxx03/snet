@@ -1,0 +1,9 @@
+Package: snet
+Version: 0.1.0
+Section: free
+Priority: optional
+Depends: ipset
+Architecture: amd64
+Installed-Size: 4555755
+Maintainer: monsterxx03@gmail.com
+Description: just for free
