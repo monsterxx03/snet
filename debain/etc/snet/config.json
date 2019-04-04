@@ -1,6 +1,12 @@
 {
     "listen-host": "127.0.0.1",
     "listen-port": 1111,
+    "proxy-type": "ss",
+    "proxy-timeout": 5,
+    "http-proxy-host": "",
+    "http-proxy-port": 8080,
+    "http-proxy-auth-user": "",
+    "http-proxy-auth-password": "",
     "ss-host": "",
     "ss-port": 8080,
     "ss-chpier-method": "aes-256-cfb",

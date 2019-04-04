@@ -18,4 +18,6 @@ build_hiwifi:
 	GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build
 
 deb:
+	cp config.json.example debain/etc/snet/config.json
+	cp bin/snet debain/usr/local/bin/snet
 	dpkg -b debain snet.deb

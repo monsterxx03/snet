@@ -7,7 +7,7 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 
 ## Features
 
-- SS as upstream server
+- SS/http-tunnel as upstream server
 - Sytemwide tcp proxy (via iptables redirect) on linux desktop/server
 - Works on openwrt router.
 - Bypass traffic in China
@@ -19,7 +19,6 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 - linux only (tested on ubuntu 18.04 & manjaro && openwrt)
 - tcp only (but dns is handled)
 - ipv4 only
-- only support ss as upstream server
 
 ## Usage
 
@@ -30,6 +29,12 @@ Example config.json:
     {
         "listen-host": "127.0.0.1",
         "listen-port": 1111,
+        "proxy-type": "ss",
+        "proxy-timeout":  5,
+        "http-proxy-host": "",
+        "http-proxy-port": 8080,
+        "http-proxy-auth-user": "",
+        "http-proxy-auth-password": "",
         "ss-host": "ss.example.com",
         "ss-port": 8080,
         "ss-chpier-method": "aes-256-cfb",
@@ -39,6 +44,11 @@ Example config.json:
         "enable-dns-cache": true,
         "mode": "local" 
     }
+
+supported proxy-type:
+
+- ss: use ss as upstream server
+- http: use http proxy server as upstream server(should support `CONNECT` method, eg: squid)
 
 Since `snet` will modify iptables, root privilege is required. 
 
@@ -70,7 +80,7 @@ Way 2 (if you're sure no useful iptable rules on your system):
 
 - Manjaro's NetworkManager will create a ipv6 dns nameserver in /etc/resolv.conf, eg: `nameserver fe80::1%enp51s0`.
 If it's first nameserver, dns query will bypass `snet`(since I didn't handle ipv6), you need to disable ipv6 or put it on second line.
-- Chrome's cache for google.com is wired.If you can visit youtube.com or twitter.com, but can't open google.com, try to clean dns at: chrome://net-internals/#dns or restart chrome.
+- Chrome's cache for google.com is wired.If you can visit youtube.com or twitter.com, but can't open google.com, try to restart chrome to clean dns cache.
 
 ## TODO:
 
