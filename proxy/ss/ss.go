@@ -5,6 +5,7 @@ import (
 	ss "github.com/shadowsocks/shadowsocks-go/shadowsocks"
 	"net"
 	proxy "snet/proxy"
+	"time"
 )
 
 type Config struct {
@@ -12,6 +13,7 @@ type Config struct {
 	Port         int
 	CipherMethod string
 	Password     string
+	Timeout      time.Duration
 }
 
 type Server struct {

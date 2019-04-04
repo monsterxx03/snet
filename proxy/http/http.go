@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	proxy "snet/proxy"
+	"time"
 )
 
 type Config struct {
@@ -13,6 +14,7 @@ type Config struct {
 	Port         int
 	AuthUser     string
 	AuthPassword string
+	Timeout      time.Duration
 }
 
 type Server struct {
@@ -67,7 +69,7 @@ func (s *Server) Pipe(src, dst net.Conn) error {
 	defer dst.Close()
 	b := make([]byte, 1024)
 	for {
-		// TODO set timeout
+		src.SetReadDeadline(time.Now().Add(10 * s.cfg.Timeout))
 		n, err := src.Read(b)
 		if err != nil {
 			return err

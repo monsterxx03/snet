@@ -11,12 +11,13 @@ import (
 //go:generate go run chnroutes_generate.go
 
 const (
-	DefaultLHost     = "127.0.0.1"
-	DefaultLPort     = 1111
-	DefaultProxyType = "ss"
-	DefaultCNDNS     = "223.6.6.6"
-	DefaultFQDNS     = "8.8.8.8"
-	DefaultMode      = "local"
+	DefaultLHost        = "127.0.0.1"
+	DefaultLPort        = 1111
+	DefaultProxyTimeout = 5
+	DefaultProxyType    = "ss"
+	DefaultCNDNS        = "223.6.6.6"
+	DefaultFQDNS        = "8.8.8.8"
+	DefaultMode         = "local"
 )
 
 var (

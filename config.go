@@ -7,12 +7,14 @@ import (
 	"snet/proxy"
 	http "snet/proxy/http"
 	ss "snet/proxy/ss"
+	"time"
 )
 
 type Config struct {
 	LHost                 string `json:"listen-host"`
 	LPort                 int    `json:"listen-port"`
 	ProxyType             string `json:"proxy-type"`
+	ProxyTimeout          int    `json:"proxy-timeout"`
 	HttpProxyHost         string `json:"http-proxy-host"`
 	HttpProxyPort         int    `json:"http-proxy-port"`
 	HttpProxyAuthUser     string `json:"http-proxy-auth-user"`
@@ -45,6 +47,9 @@ func LoadConfig(configPath string) (*Config, error) {
 	if config.LPort == 0 {
 		config.LPort = DefaultLPort
 	}
+	if config.ProxyTimeout == 0 {
+		config.ProxyTimeout = DefaultProxyTimeout
+	}
 	if config.CNDNS == "" {
 		config.CNDNS = DefaultCNDNS
 	}
@@ -60,9 +65,9 @@ func LoadConfig(configPath string) (*Config, error) {
 func genConfigByType(c *Config, proxyType string) proxy.Config {
 	switch proxyType {
 	case "ss":
-		return &ss.Config{Host: c.SSHost, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd}
+		return &ss.Config{Host: c.SSHost, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
 	case "http":
-		return &http.Config{Host: c.HttpProxyHost, Port: c.HttpProxyPort, AuthUser: c.HttpProxyAuthUser, AuthPassword: c.HttpProxyAuthPassword}
+		return &http.Config{Host: c.HttpProxyHost, Port: c.HttpProxyPort, AuthUser: c.HttpProxyAuthUser, AuthPassword: c.HttpProxyAuthPassword, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
 	}
 	return nil
 }
