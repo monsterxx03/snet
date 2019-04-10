@@ -11,7 +11,7 @@ deploy:
   api_key:
     secure: NlwUZYtFudPFUAIMHV9row8MP4hnCUWbSARTGVVZ1VByvViHMLrVU875tbYuJ10fKRJtD5Qdd8EHub49xLTIEuje3krN8Yk4IGaWVi1pasxMSxIVtIIRD8ip9y7OWdZFXpRrI1eWDiw+9iYJKNcRP1Ratn0zRmef1ZEvCzTGruoPIvbcEEgmXE5N4K9MWCGhWGlE4V9EezNnaDGjlRm32zv/iVP5LdmQaA4C5d7pCEUIqM9jW6+w2JPaDj7NtkwExEb9+XiB52Hr27IcPpBBlLlpOor6LAdctVHw/qR0jirylnG6NKDgduKHwQg6q+4FGw3u5u0PMGlCcPMdlCSibpqOuEsb6hwF4ZbL7tEVChqW08Ia4teRWOLNox3q/1X3SraW2NyMjD2O7MpWlJp7VlwcqXM2mG+pC9Re6HvZupVOZ60zt97Y3mmTt+L3N5bzfMYcDHZLvSZCl6WXrVTjkt+7fkk0UiWbROUOQnbwrsA3flh9MiFB1L6yR+W8dMaAG+8gJpyyI+fASratDZZvQzOTUs6mrFc2rqkdKdVj+ZE1/a3MJTDAgg1na54HZIdRU+fTN1Zamyz/lPWXKexGirWnn2R7TFZXUmi34BQAxp1eACVmjxJ7dCrQ9a82ZBRIQddquRrFp7k5DPQp2TzGP7nO5qEr0eHDwLtLI2tLefA=
   file: bin/snet
-  skip_clean: true
+  skip_cleanup: true
   on:
     overwrite: true
     repo: monsterxx03/snet
