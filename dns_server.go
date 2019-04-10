@@ -88,7 +88,8 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		return err
 	}
 	if s.cache != nil {
-		cachedData := s.cache.Get(dnsQuery.QDomain)
+		// only cache A record
+		cachedData := s.cache.Get(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType))
 		if cachedData != nil {
 			LOG.Debug("dns cache hit:", dnsQuery.QDomain)
 			resp := cachedData.([]byte)
@@ -146,7 +147,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	}
 	if len(useMsg.ARecords) > 0 && s.cache != nil {
 		// add to dns cache
-		s.cache.Add(dnsQuery.QDomain, raw, time.Now().Add(time.Second*time.Duration(useMsg.ARecords[0].TTL)))
+		s.cache.Add(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType), raw, time.Now().Add(time.Second*time.Duration(useMsg.ARecords[0].TTL)))
 	}
 
 	return nil
