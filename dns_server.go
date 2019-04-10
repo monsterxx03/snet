@@ -88,7 +88,6 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		return err
 	}
 	if s.cache != nil {
-		// only cache A record
 		cachedData := s.cache.Get(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType))
 		if cachedData != nil {
 			LOG.Debug("dns cache hit:", dnsQuery.QDomain)
