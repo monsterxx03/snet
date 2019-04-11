@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"snet/proxy"
 	http "snet/proxy/http"
@@ -61,7 +60,6 @@ func LoadConfig(configPath string) (*Config, error) {
 	if config.Mode == "" {
 		config.Mode = DefaultMode
 	}
-	fmt.Println(config.EnforceTTL)
 	return &config, nil
 }
 
