@@ -79,7 +79,7 @@ func main() {
 	setupIptableRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS, setName)
 
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
-	dns, err := NewDNS(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache)
+	dns, err := NewDNS(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL)
 	exitOnError(err)
 	go func() {
 		errCh <- dns.Run()

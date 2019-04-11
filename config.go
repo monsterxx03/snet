@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"snet/proxy"
 	http "snet/proxy/http"
@@ -26,6 +27,7 @@ type Config struct {
 	CNDNS                 string `json:"cn-dns"`
 	FQDNS                 string `json:"fq-dns"`
 	EnableDNSCache        bool   `json:"enable-dns-cache"`
+	EnforceTTL            uint32 `json:"enforce-ttl"`
 	Mode                  string `json:"mode"`
 }
 
@@ -59,6 +61,7 @@ func LoadConfig(configPath string) (*Config, error) {
 	if config.Mode == "" {
 		config.Mode = DefaultMode
 	}
+	fmt.Println(config.EnforceTTL)
 	return &config, nil
 }
 

@@ -42,6 +42,7 @@ Example config.json:
         "cn-dns": "114.114.114.114",  # dns in China
         "fq-dns": "8.8.8.8",  # clean dns out of China
         "enable-dns-cache": true,
+        "enforce-ttl": 0,  # if > 0, will use this value otherthan A record's TTL
         "mode": "local" 
     }
 

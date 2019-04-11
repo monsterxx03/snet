@@ -14,5 +14,6 @@
     "cn-dns": "223.6.6.6",
     "fq-dns": "8.8.8.8",
     "enable-dns-cache": true,
+    "enforce-ttl": 0,
     "mode": "local"
 }

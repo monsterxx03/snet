@@ -12,7 +12,7 @@ const (
 	dnsPort    = 53
 	dnsTimeout = 5
 	cacheSize  = 5000
-	defaultTTL = 300
+	defaultTTL = 300 // used to cache empty A records
 )
 
 type DNS struct {
@@ -20,12 +20,13 @@ type DNS struct {
 	udpListener      *net.UDPConn
 	cnDNS            string
 	fqDNS            string
+	enforceTTL       uint32
 	originalResolver []byte
 	ipchecker        *IPChecker
 	cache            *LRU
 }
 
-func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool) (*DNS, error) {
+func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -42,11 +43,12 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool) (*DNS, error) {
 		}
 	}
 	return &DNS{
-		udpAddr:   uaddr,
-		cnDNS:     cnDNS,
-		fqDNS:     fqDNS,
-		ipchecker: ipchecker,
-		cache:     cache,
+		udpAddr:    uaddr,
+		cnDNS:      cnDNS,
+		fqDNS:      fqDNS,
+		enforceTTL: enforceTTL,
+		ipchecker:  ipchecker,
+		cache:      cache,
 	}, nil
 }
 
@@ -147,10 +149,15 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	}
 	if s.cache != nil {
 		var ttl uint32
-		if len(useMsg.ARecords) > 0 {
-			ttl = useMsg.ARecords[0].TTL
+		if s.enforceTTL > 0 {
+			ttl = s.enforceTTL
 		} else {
-			ttl = defaultTTL
+			// if enforceTTL not set, follow A record's TTL
+			if len(useMsg.ARecords) > 0 {
+				ttl = useMsg.ARecords[0].TTL
+			} else {
+				ttl = defaultTTL
+			}
 		}
 		// add to dns cache
 		s.cache.Add(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType), raw, time.Now().Add(time.Second*time.Duration(ttl)))
