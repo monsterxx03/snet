@@ -12,6 +12,7 @@ const (
 	dnsPort    = 53
 	dnsTimeout = 5
 	cacheSize  = 5000
+	defaultTTL = 300
 )
 
 type DNS struct {
@@ -144,9 +145,15 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if _, err := s.udpListener.WriteToUDP(raw, reqUaddr); err != nil {
 		return err
 	}
-	if len(useMsg.ARecords) > 0 && s.cache != nil {
+	if s.cache != nil {
+		var ttl uint32
+		if len(useMsg.ARecords) > 0 {
+			ttl = useMsg.ARecords[0].TTL
+		} else {
+			ttl = defaultTTL
+		}
 		// add to dns cache
-		s.cache.Add(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType), raw, time.Now().Add(time.Second*time.Duration(useMsg.ARecords[0].TTL)))
+		s.cache.Add(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType), raw, time.Now().Add(time.Second*time.Duration(ttl)))
 	}
 
 	return nil
