@@ -16,5 +16,6 @@
     "enable-dns-cache": true,
     "enforce-ttl": 0,
     "disable-qtypes": ["AAAA"],
+    "force-fq": ["*.cloudfront.net", "*.amazonaws.com"],
     "mode": "local"
 }

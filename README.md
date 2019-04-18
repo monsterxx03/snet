@@ -44,6 +44,7 @@ Example config.json:
         "enable-dns-cache": true,
         "enforce-ttl": 0,  # if > 0, will use this value otherthan A record's TTL
         "disable-qtypes": ["AAAA"], # return empty dns msg for those query types
+        "force-fq": ["*.cloudfront.net"], # domain pattern matched will skip cn-dns query
         "mode": "local" 
     }
 

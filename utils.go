@@ -26,3 +26,20 @@ func printBytes(data []byte) {
 	}
 	fmt.Println("[", strings.Join(debug, ","), "]")
 }
+
+func domainMatch(domain string, patterns []string) bool {
+	for _, p := range patterns {
+		if strings.HasPrefix(p, "*") {
+			parts := strings.SplitAfter(p, "*.")
+			if len(parts) > 2 {
+				panic("invalid pattern:" + p)
+			}
+			if strings.HasSuffix(domain, parts[1]) {
+				return true
+			}
+		} else if domain == p {
+			return true
+		}
+	}
+	return false
+}

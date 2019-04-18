@@ -28,6 +28,7 @@ type Config struct {
 	EnableDNSCache        bool     `json:"enable-dns-cache"`
 	EnforceTTL            uint32   `json:"enforce-ttl"`
 	DisableQTypes         []string `json:"disable-qtypes"`
+	ForceFQ               []string `json:"force-fq"`
 	Mode                  string   `json:"mode"`
 }
 

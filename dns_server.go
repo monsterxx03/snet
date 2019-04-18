@@ -23,12 +23,13 @@ type DNS struct {
 	fqDNS            string
 	enforceTTL       uint32
 	disableQTypes    []string
+	forceFQ          []string
 	originalResolver []byte
 	ipchecker        *IPChecker
 	cache            *LRU
 }
 
-func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string) (*DNS, error) {
+func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -50,6 +51,7 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, Dis
 		fqDNS:         fqDNS,
 		enforceTTL:    enforceTTL,
 		disableQTypes: DisableQTypes,
+		forceFQ:       ForceFq,
 		ipchecker:     ipchecker,
 		cache:         cache,
 	}, nil
@@ -87,8 +89,8 @@ func (s *DNS) Shutdown() error {
 
 func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	var wg sync.WaitGroup
-	var cnData []byte
-	var fqData []byte
+	var cnData, fqData []byte
+	var cnMsg, fqMsg *DNSMsg
 	dnsQuery, err := s.parse(data)
 	if err != nil {
 		return err
@@ -117,15 +119,20 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			return nil
 		}
 	}
-	wg.Add(2)
-	go func(data []byte) {
-		defer wg.Done()
-		var err error
-		cnData, err = s.queryCN(data)
-		if err != nil {
-			LOG.Warn("failed to query CN dns:", dnsQuery, err)
-		}
-	}(data)
+	if !domainMatch(dnsQuery.QDomain, s.forceFQ) {
+		wg.Add(1)
+		go func(data []byte) {
+			defer wg.Done()
+			var err error
+			cnData, err = s.queryCN(data)
+			if err != nil {
+				LOG.Warn("failed to query CN dns:", dnsQuery, err)
+			}
+		}(data)
+	} else {
+		LOG.Debug("skip cn-dns for", dnsQuery.QDomain)
+	}
+	wg.Add(1)
 	go func(data []byte) {
 		defer wg.Done()
 		var err error
@@ -136,20 +143,24 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	}(data)
 
 	wg.Wait()
-	// TODO no need to wait for fq if cn response first and it's a cn ip
-	cnMsg, err := s.parse(cnData)
-	if err != nil {
-		return err
+
+	if len(cnData) > 0 {
+		cnMsg, err = s.parse(cnData)
+		if err != nil {
+			return err
+		}
+		LOG.Debug("cn", cnMsg)
 	}
-	fqMsg, err := s.parse(fqData)
-	if err != nil {
-		return err
+	if len(fqData) > 0 {
+		fqMsg, err = s.parse(fqData)
+		if err != nil {
+			return err
+		}
+		LOG.Debug("fq", fqMsg)
 	}
-	LOG.Debug("fq", fqMsg)
-	LOG.Debug("cn", cnMsg)
 	var raw []byte
 	useMsg := cnMsg
-	if len(cnMsg.ARecords) >= 1 && s.ipchecker.InChina(cnMsg.ARecords[0].IP) {
+	if cnMsg != nil && len(cnMsg.ARecords) >= 1 && s.ipchecker.InChina(cnMsg.ARecords[0].IP) {
 		// if cn dns have response and it's an cn ip, we think it's a site in China
 		raw = cnData
 	} else {
@@ -166,7 +177,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			ttl = s.enforceTTL
 		} else {
 			// if enforceTTL not set, follow A record's TTL
-			if len(useMsg.ARecords) > 0 {
+			if useMsg != nil && len(useMsg.ARecords) > 0 {
 				ttl = useMsg.ARecords[0].TTL
 			} else {
 				ttl = defaultTTL
