@@ -17,6 +17,9 @@ test:
 build_hiwifi:
 	GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build
 
+build_erx:
+	GOOS=linux GOARCH=mipsle go build
+
 deb:
 	cp config.json.example debain/etc/snet/config.json
 	cp bin/snet debain/usr/local/bin/snet
