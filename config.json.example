@@ -15,5 +15,6 @@
     "fq-dns": "8.8.8.8",
     "enable-dns-cache": true,
     "enforce-ttl": 0,
+    "disable-qtypes": ["AAAA"],
     "mode": "local"
 }

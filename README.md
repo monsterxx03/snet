@@ -43,6 +43,7 @@ Example config.json:
         "fq-dns": "8.8.8.8",  # clean dns out of China
         "enable-dns-cache": true,
         "enforce-ttl": 0,  # if > 0, will use this value otherthan A record's TTL
+        "disable-qtypes": ["AAAA"], # return empty dns msg for those query types
         "mode": "local" 
     }
 

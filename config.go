@@ -11,23 +11,24 @@ import (
 )
 
 type Config struct {
-	LHost                 string `json:"listen-host"`
-	LPort                 int    `json:"listen-port"`
-	ProxyType             string `json:"proxy-type"`
-	ProxyTimeout          int    `json:"proxy-timeout"`
-	HttpProxyHost         string `json:"http-proxy-host"`
-	HttpProxyPort         int    `json:"http-proxy-port"`
-	HttpProxyAuthUser     string `json:"http-proxy-auth-user"`
-	HttpProxyAuthPassword string `json:"http-proxy-auth-password"`
-	SSHost                string `json:"ss-host"`
-	SSPort                int    `json:"ss-port"`
-	SSCphierMethod        string `json:"ss-chpier-method"`
-	SSPasswd              string `json:"ss-passwd"`
-	CNDNS                 string `json:"cn-dns"`
-	FQDNS                 string `json:"fq-dns"`
-	EnableDNSCache        bool   `json:"enable-dns-cache"`
-	EnforceTTL            uint32 `json:"enforce-ttl"`
-	Mode                  string `json:"mode"`
+	LHost                 string   `json:"listen-host"`
+	LPort                 int      `json:"listen-port"`
+	ProxyType             string   `json:"proxy-type"`
+	ProxyTimeout          int      `json:"proxy-timeout"`
+	HttpProxyHost         string   `json:"http-proxy-host"`
+	HttpProxyPort         int      `json:"http-proxy-port"`
+	HttpProxyAuthUser     string   `json:"http-proxy-auth-user"`
+	HttpProxyAuthPassword string   `json:"http-proxy-auth-password"`
+	SSHost                string   `json:"ss-host"`
+	SSPort                int      `json:"ss-port"`
+	SSCphierMethod        string   `json:"ss-chpier-method"`
+	SSPasswd              string   `json:"ss-passwd"`
+	CNDNS                 string   `json:"cn-dns"`
+	FQDNS                 string   `json:"fq-dns"`
+	EnableDNSCache        bool     `json:"enable-dns-cache"`
+	EnforceTTL            uint32   `json:"enforce-ttl"`
+	DisableQTypes         []string `json:"disable-qtypes"`
+	Mode                  string   `json:"mode"`
 }
 
 func LoadConfig(configPath string) (*Config, error) {

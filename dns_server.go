@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 )
@@ -21,12 +22,13 @@ type DNS struct {
 	cnDNS            string
 	fqDNS            string
 	enforceTTL       uint32
+	disableQTypes    []string
 	originalResolver []byte
 	ipchecker        *IPChecker
 	cache            *LRU
 }
 
-func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32) (*DNS, error) {
+func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -43,12 +45,13 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32) (*D
 		}
 	}
 	return &DNS{
-		udpAddr:    uaddr,
-		cnDNS:      cnDNS,
-		fqDNS:      fqDNS,
-		enforceTTL: enforceTTL,
-		ipchecker:  ipchecker,
-		cache:      cache,
+		udpAddr:       uaddr,
+		cnDNS:         cnDNS,
+		fqDNS:         fqDNS,
+		enforceTTL:    enforceTTL,
+		disableQTypes: DisableQTypes,
+		ipchecker:     ipchecker,
+		cache:         cache,
 	}, nil
 }
 
@@ -89,6 +92,16 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	dnsQuery, err := s.parse(data)
 	if err != nil {
 		return err
+	}
+	for _, t := range s.disableQTypes {
+		if strings.ToLower(t) == strings.ToLower(dnsQuery.QType.String()) {
+			LOG.Debug("disabled qtype", t, "for", dnsQuery.QDomain)
+			resp := GetEmptyDNSResp(data)
+			if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
+				return err
+			}
+			return nil
+		}
 	}
 	if s.cache != nil {
 		cachedData := s.cache.Get(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType))

@@ -70,6 +70,14 @@ func (m *DNSMsg) String() string {
 		t, m.ID, m.QDCount, m.ANCount, m.QDomain, m.QType, m.QClass, m.ARecords)
 }
 
+func GetEmptyDNSResp(queryData []byte) []byte {
+	resp := queryData
+	// modify header to convert query to response
+	resp[2] = 0x81 // set QR bit to 1, means it's a response
+	resp[3] = 0x80
+	return resp
+}
+
 func (m *DNSMsg) IsQuery() bool {
 	return m.qr == 0
 }
