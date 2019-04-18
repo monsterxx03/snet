@@ -15,7 +15,7 @@
     "fq-dns": "8.8.8.8",
     "enable-dns-cache": true,
     "enforce-ttl": 0,
-    "disable-qtypes": ["AAAA"],
+    "disable-qtypes": ["AAAA", "PTR"],
     "force-fq": ["*.cloudfront.net", "*.amazonaws.com"],
     "mode": "local"
 }
