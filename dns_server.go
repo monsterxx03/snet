@@ -171,7 +171,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if _, err := s.udpListener.WriteToUDP(raw, reqUaddr); err != nil {
 		return err
 	}
-	if s.cache != nil {
+	if s.cache != nil && len(raw) > 0 {
 		var ttl uint32
 		if s.enforceTTL > 0 {
 			ttl = s.enforceTTL
