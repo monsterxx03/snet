@@ -11,6 +11,9 @@ update:
 	go generate
 	go fmt
 
+update_hosts:
+	wget https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+
 test:
 	go test
 

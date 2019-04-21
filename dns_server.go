@@ -7,13 +7,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"snet/bloomfilter"
 )
 
 const (
-	dnsPort    = 53
-	dnsTimeout = 5
-	cacheSize  = 5000
-	defaultTTL = 300 // used to cache empty A records
+	dnsPort              = 53
+	dnsTimeout           = 5
+	cacheSize            = 5000
+	defaultTTL           = 300 // used to cache empty A records
+	bloomfilterErrorRate = 0.00001
 )
 
 type DNS struct {
@@ -24,7 +27,7 @@ type DNS struct {
 	enforceTTL       uint32
 	disableQTypes    []string
 	forceFQ          []string
-	blockHosts       []string
+	blockHostsBF     *bloomfilter.Bloomfilter
 	originalResolver []byte
 	ipchecker        *IPChecker
 	cache            *LRU
@@ -46,6 +49,15 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, Dis
 			return nil, err
 		}
 	}
+	bf, err := bloomfilter.NewBloomfilter(len(BlockHosts), bloomfilterErrorRate)
+	if err != nil {
+		return nil, err
+	}
+	for _, host := range BlockHosts {
+		if err := bf.Add([]byte(host)); err != nil {
+			return nil, err
+		}
+	}
 	return &DNS{
 		udpAddr:       uaddr,
 		cnDNS:         cnDNS,
@@ -53,7 +65,7 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, Dis
 		enforceTTL:    enforceTTL,
 		disableQTypes: DisableQTypes,
 		forceFQ:       ForceFq,
-		blockHosts:    BlockHosts,
+		blockHostsBF:  bf,
 		ipchecker:     ipchecker,
 		cache:         cache,
 	}, nil
@@ -107,7 +119,9 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			return nil
 		}
 	}
-	if domainMatch(dnsQuery.QDomain, s.blockHosts) {
+	// use bloomfilter to test whether should block this host
+	if s.blockHostsBF.Has([]byte(dnsQuery.QDomain)) {
+		// TODO fallback to full scan check, since bloomfilter has error rate
 		LOG.Info("block ad host", dnsQuery.QDomain)
 		// return 127.0.0.1 for this host
 		resp := GetBlockDNSResp(data, dnsQuery.QDomain)

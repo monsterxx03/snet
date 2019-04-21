@@ -79,7 +79,7 @@ func GetEmptyDNSResp(queryData []byte) []byte {
 }
 
 func GetBlockDNSResp(queryData []byte, queryDomain string) []byte {
-	// Too unly, need to rewrite dns parser
+	// TODO ugly, need to rewrite dns parser
 	labelLen := 0
 	for _, label := range strings.Split(queryDomain, ".") {
 		labelLen += 1 + len(label)

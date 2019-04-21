@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -82,14 +83,14 @@ func main() {
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
 	lines := []string{}
 	if config.BlockHostFile != "" {
-		// use bloomfilter to build block list, speedup filter
+		// TODO use bloomfilter to build block list, speedup filter
 		f, err := os.Open(config.BlockHostFile)
 		if err != nil {
 			exitOnError(err)
 		}
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
+			lines = append(lines, strings.TrimSpace(scanner.Text()))
 		}
 	}
 	dns, err := NewDNS(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, lines)
