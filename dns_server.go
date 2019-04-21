@@ -24,12 +24,13 @@ type DNS struct {
 	enforceTTL       uint32
 	disableQTypes    []string
 	forceFQ          []string
+	blockHosts       []string
 	originalResolver []byte
 	ipchecker        *IPChecker
 	cache            *LRU
 }
 
-func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string) (*DNS, error) {
+func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, BlockHosts []string) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -52,6 +53,7 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, Dis
 		enforceTTL:    enforceTTL,
 		disableQTypes: DisableQTypes,
 		forceFQ:       ForceFq,
+		blockHosts:    BlockHosts,
 		ipchecker:     ipchecker,
 		cache:         cache,
 	}, nil
@@ -105,18 +107,31 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			return nil
 		}
 	}
+	if domainMatch(dnsQuery.QDomain, s.blockHosts) {
+		LOG.Info("block ad host", dnsQuery.QDomain)
+		// return 127.0.0.1 for this host
+		resp := GetBlockDNSResp(data, dnsQuery.QDomain)
+		if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
+			return err
+		}
+		return nil
+	}
 	if s.cache != nil {
 		cachedData := s.cache.Get(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType))
 		if cachedData != nil {
 			LOG.Debug("dns cache hit:", dnsQuery.QDomain)
 			resp := cachedData.([]byte)
-			// rewrite first 2 bytes(dns id)
-			resp[0] = data[0]
-			resp[1] = data[1]
-			if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
-				return err
+			if len(resp) <= 2 {
+				LOG.Err("invalid cached data", resp, dnsQuery.QDomain, dnsQuery.QType.String())
+			} else {
+				// rewrite first 2 bytes(dns id)
+				resp[0] = data[0]
+				resp[1] = data[1]
+				if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
+					return err
+				}
+				return nil
 			}
-			return nil
 		}
 	}
 	if !domainMatch(dnsQuery.QDomain, s.forceFQ) {

@@ -78,6 +78,41 @@ func GetEmptyDNSResp(queryData []byte) []byte {
 	return resp
 }
 
+func GetBlockDNSResp(queryData []byte, queryDomain string) []byte {
+	// Too unly, need to rewrite dns parser
+	labelLen := 0
+	for _, label := range strings.Split(queryDomain, ".") {
+		labelLen += 1 + len(label)
+	}
+	labelLen++ // domain endswith 0x00
+
+	answerOffset := 12 + labelLen + 4
+	// 16 is length of a single answer field: name pointer + type + class + ttl + len + ip
+	resp := make([]byte, answerOffset+16)
+	copy(resp, queryData[:answerOffset])
+	// modify header to convert query to response
+	resp[2] = 0x81 // set QR bit to 1, means it's a response
+	resp[3] = 0x80
+	resp[7] = 0x01  // set answer count field to 1
+	resp[9] = 0x00  // set authority rrs to 0
+	resp[11] = 0x00 // set additional rrs to 0
+	// make name pointer ref name in query field
+	resp[answerOffset] = 0xc0
+	resp[answerOffset+1] = 0x0c
+	// type A
+	resp[answerOffset+3] = 0x01
+	// class 1
+	resp[answerOffset+5] = 0x01
+	// tll 100
+	resp[answerOffset+9] = 0x64
+	// data len
+	resp[answerOffset+11] = 0x4
+	// ip addr: 127.0.0.1
+	resp[answerOffset+12] = 0x7f
+	resp[answerOffset+15] = 0x1
+	return resp
+}
+
 func (m *DNSMsg) IsQuery() bool {
 	return m.qr == 0
 }

@@ -29,6 +29,7 @@ type Config struct {
 	EnforceTTL            uint32   `json:"enforce-ttl"`
 	DisableQTypes         []string `json:"disable-qtypes"`
 	ForceFQ               []string `json:"force-fq"`
+	BlockHostFile         string   `json:"block-host-file"`
 	Mode                  string   `json:"mode"`
 }
 

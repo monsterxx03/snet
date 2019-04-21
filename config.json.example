@@ -17,5 +17,6 @@
     "enforce-ttl": 0,
     "disable-qtypes": ["AAAA", "PTR"],
     "force-fq": ["*.cloudfront.net", "*.amazonaws.com"],
+    "block-host-file": "",
     "mode": "local"
 }
