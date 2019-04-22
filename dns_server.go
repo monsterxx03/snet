@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -28,12 +30,13 @@ type DNS struct {
 	disableQTypes    []string
 	forceFQ          []string
 	blockHostsBF     *bloomfilter.Bloomfilter
+	blockHosts       []string
 	originalResolver []byte
 	ipchecker        *IPChecker
 	cache            *LRU
 }
 
-func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, BlockHosts []string) (*DNS, error) {
+func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, BlockHostFile string) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -49,13 +52,25 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, Dis
 			return nil, err
 		}
 	}
-	bf, err := bloomfilter.NewBloomfilter(len(BlockHosts), bloomfilterErrorRate)
-	if err != nil {
-		return nil, err
-	}
-	for _, host := range BlockHosts {
-		if err := bf.Add([]byte(host)); err != nil {
+	var bf *bloomfilter.Bloomfilter
+	lines := []string{}
+	if BlockHostFile != "" {
+		f, err := os.Open(BlockHostFile)
+		if err != nil {
 			return nil, err
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			lines = append(lines, strings.TrimSpace(scanner.Text()))
+		}
+		bf, err = bloomfilter.NewBloomfilter(len(lines), bloomfilterErrorRate)
+		if err != nil {
+			return nil, err
+		}
+		// init bf
+		for _, line := range lines {
+			bf.Add([]byte(line))
 		}
 	}
 	return &DNS{
@@ -66,6 +81,7 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, Dis
 		disableQTypes: DisableQTypes,
 		forceFQ:       ForceFq,
 		blockHostsBF:  bf,
+		blockHosts:    lines,
 		ipchecker:     ipchecker,
 		cache:         cache,
 	}, nil
@@ -101,6 +117,21 @@ func (s *DNS) Shutdown() error {
 	return nil
 }
 
+func (s *DNS) badDomain(domain string) bool {
+	// For good domain, bloomfilter can reduce lookup time
+	// from 80us -> 1us. For bad domain, lookup time will increase
+	// about 1us, worth the effort.
+	if s.blockHostsBF != nil && s.blockHostsBF.Has([]byte(domain)) {
+		// fallback to full scan, since bloomfilter has error rate
+		for _, host := range s.blockHosts {
+			if host == domain {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	var wg sync.WaitGroup
 	var cnData, fqData []byte
@@ -119,9 +150,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			return nil
 		}
 	}
-	// use bloomfilter to test whether should block this host
-	if s.blockHostsBF.Has([]byte(dnsQuery.QDomain)) {
-		// TODO fallback to full scan check, since bloomfilter has error rate
+	if s.badDomain(dnsQuery.QDomain) {
 		LOG.Info("block ad host", dnsQuery.QDomain)
 		// return 127.0.0.1 for this host
 		resp := GetBlockDNSResp(data, dnsQuery.QDomain)

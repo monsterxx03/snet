@@ -24,7 +24,7 @@ func (b *Bitarray) Setbit(loc uint32) error {
 	if loc > b.Len() {
 		return fmt.Errorf("%d is larger than array size %d", loc, b.Len())
 	}
-	b.bytes[loc/8] |= 1 << (loc % 8)
+	b.bytes[loc/8] |= (1 << (loc % 8))
 	return nil
 }
 

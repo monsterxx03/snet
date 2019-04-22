@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 )
 
@@ -81,19 +79,7 @@ func main() {
 	setupIptableRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS, setName)
 
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
-	lines := []string{}
-	if config.BlockHostFile != "" {
-		// TODO use bloomfilter to build block list, speedup filter
-		f, err := os.Open(config.BlockHostFile)
-		if err != nil {
-			exitOnError(err)
-		}
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			lines = append(lines, strings.TrimSpace(scanner.Text()))
-		}
-	}
-	dns, err := NewDNS(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, lines)
+	dns, err := NewDNS(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.BlockHostFile)
 	exitOnError(err)
 	go func() {
 		errCh <- dns.Run()

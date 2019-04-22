@@ -15,7 +15,7 @@ update_hosts:
 	wget https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
 
 test:
-	go test
+	go test --race -v $$(go list ./...| grep -v -e /vendor/)
 
 build_hiwifi:
 	GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build

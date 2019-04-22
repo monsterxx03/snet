@@ -12,10 +12,12 @@ func TestBitArray(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err := ba.Setbit(13); err != nil {
-		t.Error(err)
-	}
-	if !ba.IsSet(13) {
-		t.Error("test set failed")
+	for i := 0; i < 16; i++ {
+		if err := ba.Setbit(uint32(i)); err != nil {
+			t.Error(err)
+		}
+		if !ba.IsSet(uint32(i)) {
+			t.Error("test set failed at", i)
+		}
 	}
 }
