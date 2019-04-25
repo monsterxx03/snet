@@ -19,7 +19,7 @@ func genAdHosts() ([]string, error) {
 	}
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
-	result := make([]string, 0, 30000)
+	result := make([]string, 0, 37000)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
