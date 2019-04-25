@@ -9,10 +9,11 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 
 - SS/http-tunnel as upstream server
 - Sytemwide tcp proxy (via iptables redirect) on linux desktop/server
-- Works on openwrt router.
+- Works on openwrt router
 - Bypass traffic in China
-- Handle DNS in the way like ChinaDNS, so website have CDN out of China won't be redirected to their overseas site.
-- Local DNS cache based on TTL.
+- Handle DNS in the way like ChinaDNS, so website have CDN out of China won't be redirected to their overseas site
+- Local DNS cache based on TTL
+- block by domain name
 
 ## Limation:
 
@@ -45,6 +46,7 @@ Example config.json:
         "enforce-ttl": 0,  # if > 0, will use this value otherthan A record's TTL
         "disable-qtypes": ["AAAA"], # return empty dns msg for those query types
         "force-fq": ["*.cloudfront.net"], # domain pattern matched will skip cn-dns query
+        "block-host-file": "ad_hosts", # domain name in this file will return 127.0.0.1 to client
         "mode": "local" 
     }
 
@@ -88,5 +90,4 @@ If it's first nameserver, dns query will bypass `snet`(since I didn't handle ipv
 
 ## TODO:
 
-- Filter by domain.
 - Stats api

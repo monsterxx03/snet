@@ -9,6 +9,7 @@ import (
 )
 
 //go:generate go run chnroutes_generate.go
+//go:generate go run ad_hosts_generate.go
 
 const (
 	DefaultLHost        = "127.0.0.1"

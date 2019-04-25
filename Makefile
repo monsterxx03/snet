@@ -8,11 +8,9 @@ run:
 
 update:
 	curl http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest -o apnic.txt
+	curl https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o ad_hosts.txt
 	go generate
 	go fmt
-
-update_hosts:
-	wget https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
 
 test:
 	go test --race -v $$(go list ./...| grep -v -e /vendor/)
