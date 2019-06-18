@@ -80,10 +80,7 @@ func getDst(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
 	}
 	// f is a copy of tcp connection's underlying fd, close it won't affect current connection
 	defer f.Close()
-	fd := f.Fd() // returned fd is in blocking mode
-	if err := syscall.SetNonblock(int(fd), true); err != nil {
-		return "", -1, err
-	}
+	fd := f.Fd()
 	addr, err := syscall.GetsockoptIPv6Mreq(int(fd), syscall.IPPROTO_IP, SO_ORIGINAL_DST)
 	if err != nil {
 		return "", -1, err
