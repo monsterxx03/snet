@@ -54,7 +54,7 @@ func main() {
 	}
 	LOG = NewLogger(logLevel)
 
-	redir, err := redirector.NewRedirect(Chnroutes)
+	redir, err := redirector.NewRedirector(Chnroutes)
 	exitOnError(err)
 
 	if *configFile == "" {

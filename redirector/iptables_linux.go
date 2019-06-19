@@ -118,7 +118,7 @@ func (r *IPTables) GetDstAddr() {
 
 }
 
-func NewRedirect(byPassRoutes []string) (Redirector, error) {
+func NewRedirector(byPassRoutes []string) (Redirector, error) {
 
 	if _, err := utils.Sh("which ipset"); err != nil {
 		return nil, err

@@ -29,14 +29,14 @@ func (pf *PacketFilter) Init() error {
 
 func (pf *PacketFilter) SetupRules(mode string, snetHost string, snetPort int, dnsPort int, cnDNS string) error {
 	cmd := fmt.Sprintf(`
-echo "
+echo '
 %s
-dev=en0
-lo=lo0
-rdr pass log on $lo inet proto tcp from $dev to any port 1:65535 -> %s port  %d
-#pass out on $dev from <%s> to any
+dev="en0"
+lo="lo0"
+rdr pass log on $lo inet proto tcp from $dev to any port 1:65535 -> %s port %d
+pass out on $dev from <%s> to any
 pass out on $dev route-to $lo inet proto tcp from $dev to any port 1:65535
-" | sudo pfctl -ef -
+' | sudo pfctl -ef -
 `, pf.bypassTable.String(), snetHost, snetPort, pf.bypassTable.Name)
 	if _, err := utils.Sh(cmd); err != nil {
 		return err
@@ -66,7 +66,7 @@ func (pf *PacketFilter) GetDstAddr() {
 
 }
 
-func NewRedirect(byPassRoutes []string) (Redirector, error) {
+func NewRedirector(byPassRoutes []string) (Redirector, error) {
 	if _, err := utils.Sh("which pfctl"); err != nil {
 		return nil, err
 	}
