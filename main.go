@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"snet/redirector"
 	"syscall"
 )
 
@@ -53,7 +54,7 @@ func main() {
 	}
 	LOG = NewLogger(logLevel)
 
-	ipset, err := NewIPSet()
+	redir, err := redirector.NewRedirect(Chnroutes)
 	exitOnError(err)
 
 	if *configFile == "" {
@@ -65,19 +66,19 @@ func main() {
 	dnsPort := config.LPort + 100
 
 	if *clean {
-		cleanIptableRules(config.Mode, config.LHost, config.LPort, dnsPort, setName)
-		ipset.Destroy()
+		redir.CleanupRules(config.Mode, config.LHost, config.LPort, dnsPort)
+		redir.Destroy()
 		os.Exit(0)
 	}
 	s, err := NewServer(config)
 	exitOnError(err)
 	errCh := make(chan error)
 
-	exitOnError(ipset.Init())
+	exitOnError(redir.Init())
 	proxyIP := s.proxy.GetProxyIP()
 	exitOnError(err)
-	exitOnError(ipset.Bypass(proxyIP.String()))
-	setupIptableRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS, setName)
+	exitOnError(redir.ByPass(proxyIP.String()))
+	redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS)
 
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
 	dns, err := NewDNS(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.BlockHostFile)
@@ -99,8 +100,8 @@ func main() {
 	if err := <-errCh; err != nil {
 		LOG.Err(err)
 	}
-	cleanIptableRules(config.Mode, config.LHost, config.LPort, dnsPort, setName)
-	ipset.Destroy()
+	redir.CleanupRules(config.Mode, config.LHost, config.LPort, dnsPort)
+	redir.Destroy()
 
 	if err := dns.Shutdown(); err != nil {
 		LOG.Err("Error during shutdown dns server", err)

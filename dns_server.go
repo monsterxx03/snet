@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"snet/bloomfilter"
+	"snet/utils"
 )
 
 const (
@@ -177,7 +178,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			}
 		}
 	}
-	if !domainMatch(dnsQuery.QDomain, s.forceFQ) {
+	if !utils.DomainMatch(dnsQuery.QDomain, s.forceFQ) {
 		wg.Add(1)
 		go func(data []byte) {
 			defer wg.Done()
