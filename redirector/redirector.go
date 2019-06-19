@@ -1,5 +1,10 @@
 package redirector
 
+const (
+	modeLocal  = "local"
+	modeRouter = "router"
+)
+
 // https://en.wikipedia.org/wiki/Reserved_IP_addresses#Reserved_IPv4_addresses
 var whitelistCIDR = []string{
 	"0.0.0.0/8",

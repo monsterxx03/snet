@@ -11,10 +11,8 @@ import (
 )
 
 const (
-	chainName  = "SNET"
-	setName    = "BYPASS_SNET"
-	modeLocal  = "local"
-	modeRouter = "router"
+	chainName = "SNET"
+	setName   = "BYPASS_SNET"
 )
 
 type IPSet struct {
