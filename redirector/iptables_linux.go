@@ -8,11 +8,13 @@ import (
 	utils "snet/utils"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 const (
-	chainName = "SNET"
-	setName   = "BYPASS_SNET"
+	chainName       = "SNET"
+	setName         = "BYPASS_SNET"
+	SO_ORIGINAL_DST = 80 // from: /usr/include/linux/netfilter_ipv4.h
 )
 
 type IPSet struct {
@@ -114,8 +116,27 @@ func (r *IPTables) ByPass(ip string) error {
 	return r.ipset.Add(ip)
 }
 
-func (r *IPTables) GetDstAddr() {
-
+func GetDstAddr(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
+	f, err := conn.File()
+	if err != nil {
+		return "", -1, err
+	}
+	// f is a copy of tcp connection's underlying fd, close it won't affect current connection
+	defer f.Close()
+	fd := f.Fd()
+	addr, err := syscall.GetsockoptIPv6Mreq(int(fd), syscall.IPPROTO_IP, SO_ORIGINAL_DST)
+	if err != nil {
+		return "", -1, err
+	}
+	// ipv4 addr is bytes 5 to 8
+	// port number is byte 2 and 3
+	host := fmt.Sprintf("%d.%d.%d.%d",
+		addr.Multiaddr[4],
+		addr.Multiaddr[5],
+		addr.Multiaddr[6],
+		addr.Multiaddr[7],
+	)
+	return host, int(addr.Multiaddr[2]<<8) + int(addr.Multiaddr[3]), err
 }
 
 func NewRedirector(byPassRoutes []string) (Redirector, error) {

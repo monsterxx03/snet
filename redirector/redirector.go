@@ -30,5 +30,4 @@ type Redirector interface {
 	CleanupRules(mode string, snetHost string, snetPort int, dnsPort int) error
 	Destroy()
 	ByPass(ip string) error
-	GetDstAddr()
 }

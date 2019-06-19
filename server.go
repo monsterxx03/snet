@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"net"
+
 	"snet/proxy"
-	"syscall"
+	"snet/redirector"
 )
 
 const (
@@ -56,7 +57,8 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) handle(conn *net.TCPConn) error {
-	dstHost, dstPort, err := getDst(conn)
+	dstHost, dstPort, err := redirector.GetDstAddr(conn)
+	fmt.Println(dstHost, dstPort)
 	if err != nil {
 		return err
 	}
@@ -71,27 +73,4 @@ func (s *Server) handle(conn *net.TCPConn) error {
 
 func (s *Server) Shutdown() error {
 	return s.listener.Close()
-}
-
-func getDst(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
-	f, err := conn.File()
-	if err != nil {
-		return "", -1, err
-	}
-	// f is a copy of tcp connection's underlying fd, close it won't affect current connection
-	defer f.Close()
-	fd := f.Fd()
-	addr, err := syscall.GetsockoptIPv6Mreq(int(fd), syscall.IPPROTO_IP, SO_ORIGINAL_DST)
-	if err != nil {
-		return "", -1, err
-	}
-	// ipv4 addr is bytes 5 to 8
-	// port number is bytes 3 and 3
-	host := fmt.Sprintf("%d.%d.%d.%d",
-		addr.Multiaddr[4],
-		addr.Multiaddr[5],
-		addr.Multiaddr[6],
-		addr.Multiaddr[7],
-	)
-	return host, int(addr.Multiaddr[2])<<8 + int(addr.Multiaddr[3]), err
 }
