@@ -54,19 +54,23 @@ func (pf *PacketFilter) SetupRules(mode string, snetHost string, snetPort int, d
 	if mode != modeLocal {
 		return errors.New("only support local mode")
 	}
-	cmd := fmt.Sprintf(`
+	cmd, err := utils.NamedFmt(`
 echo '
-%s
+{{ .bypassTable }}
 dev="en0"
 lo="lo0"
-rdr pass log on $lo inet proto tcp from $dev to any port 1:65535 -> %s port %d
-rdr pass log on $lo inet proto udp from $dev to any port 53 -> %s port %d
-pass out on $dev route-to $lo inet proto tcp from $dev to any port 1:65535 keep state
-pass out on $dev route-to $lo inet proto udp from $dev to !%s port 53 keep state
-pass out quick on $dev proto tcp from any to <%s>  # skip bypass table
-pass out quick on $dev proto {tcp,udp} from any to %s # skip cn dns
+rdr on $lo proto tcp from $dev to any port 1:65535 -> {{.snetHost }} port {{ .snetPort }}
+rdr on $lo proto udp from $dev to any port 53 -> {{ .snetHost }} port {{ .dnsPort }}
+pass out on $dev route-to $lo proto tcp from $dev to any port 1:65535  # re-route outgoing tcp
+pass out on $dev route-to $lo proto udp from any to any port 53  # re-route outgoing udp 
+pass out proto udp from any to {{ .cnDNS }} # skip cn dns
+pass out proto tcp from any to <{{ .bypassTableName}}>  # skip cn ip + upstream proxy ip
 ' | sudo pfctl -ef -
-`, pf.bypassTable.String(), snetHost, snetPort, snetHost, dnsPort, cnDNS, pf.bypassTable.Name, cnDNS)
+`, map[string]interface{}{"bypassTable": pf.bypassTable.String(), "bypassTableName": pf.bypassTable.Name,
+		"snetHost": snetHost, "snetPort": snetPort, "cnDNS": cnDNS, "dnsPort": dnsPort})
+	if err != nil {
+		return err
+	}
 	if _, err := utils.Sh(cmd); err != nil {
 		return err
 	}

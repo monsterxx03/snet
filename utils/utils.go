@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"bytes"
 	"log"
 	exec "os/exec"
 	"strings"
+	"text/template"
 )
 
 func Sh(cmds ...string) (result string, err error) {
@@ -33,4 +35,16 @@ func DomainMatch(domain string, patterns []string) bool {
 		}
 	}
 	return false
+}
+
+func NamedFmt(msg string, args map[string]interface{}) (string, error) {
+	var result bytes.Buffer
+	tpl, err := template.New("fmt").Parse(msg)
+	if err != nil {
+		return "", err
+	}
+	if err := tpl.Execute(&result, args); err != nil {
+		return "", err
+	}
+	return result.String(), nil
 }

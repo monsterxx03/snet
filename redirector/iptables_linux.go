@@ -73,8 +73,11 @@ func (r *IPTables) SetupRules(mode string, snetHost string, snetPort int, dnsPor
 	port := strconv.Itoa(snetPort)
 	dport := strconv.Itoa(dnsPort)
 	utils.Sh("iptables -t nat -N", chainName)
+	// by pass all tcp traffic for ips in BYPASS_SNET set
 	utils.Sh("iptables -t nat -A ", chainName, "-p tcp -m set --match-set", r.ipset.Name, "dst -j RETURN")
+	// redirect all tcp traffic in SNET chain to local proxy port
 	utils.Sh("iptables -t nat -A ", chainName, "-p tcp -j REDIRECT --to-ports", port)
+	// send all output tcp traffic to SNET chain
 	utils.Sh("iptables -t nat -A OUTPUT -p tcp -j", chainName)
 	if mode == modeLocal {
 		// avoid outgoing cn dns query be redirected to snet, it's a loop!
