@@ -56,7 +56,7 @@ Example config.json:
         # config used when proxy-type is "ss"
         "ss-host": "ss.example.com",
         "ss-port": 8080,
-        "ss-chpier-method": "aes-256-cfb",
+        "ss-chpier-method": "aes-256-cfb", # https://github.com/shadowsocks/shadowsocks-go/blob/1.2.1/shadowsocks/encrypt.go#L159
         "ss-passwd": "passwd",
 
         "cn-dns": "114.114.114.114",  # dns in China
@@ -66,7 +66,7 @@ Example config.json:
         "disable-qtypes": ["AAAA"], # return empty dns msg for those query types
         "force-fq": ["*.cloudfront.net"], # domain pattern matched will skip cn-dns query
         "block-host-file": "ad_hosts", # domain name in this file will return 127.0.0.1 to client
-        "mode": "local" 
+        "mode": "local"   # run on desktop: local, run on router: router
     }
 
 supported proxy-type:
