@@ -38,8 +38,8 @@ func (t *PFTable) Add(ip string) {
 	t.bypassCidrs = append(t.bypassCidrs, ip)
 }
 
-func (t *PFTable) String() string {
-	return fmt.Sprintf("table <%s> { %s }", t.Name, strings.Join(t.bypassCidrs, " "))
+func (t *PFTable) CIDRS() string {
+	return strings.Join(t.bypassCidrs, " ")
 }
 
 type PacketFilter struct {
@@ -56,19 +56,19 @@ func (pf *PacketFilter) SetupRules(mode string, snetHost string, snetPort int, d
 	}
 	cmd, err := utils.NamedFmt(`
 echo '
-{{ .bypassTable }}
-dev="en0"
+table <{{ .bypassTable.Name }}> { {{ .bypassTable.CIDRS }} }
 lo="lo0"
-rdr on $lo proto tcp from $dev to any port 1:65535 -> {{.snetHost }} port {{ .snetPort }}
-rdr on $lo proto udp from $dev to any port 53 -> {{ .snetHost }} port {{ .dnsPort }}
-pass out on $dev route-to $lo proto tcp from $dev to any port 1:65535  # re-route outgoing tcp
-pass out on $dev route-to $lo proto udp from any to any port 53  # re-route outgoing udp 
+rdr on $lo proto tcp from any to any port 1:65535 -> {{.snetHost }} port {{ .snetPort }}  # let proxy handle tcp 
+rdr on $lo proto udp from any to any port 53 -> {{ .snetHost }} port {{ .dnsPort }}  # let proxy handle dns query
+pass out  route-to $lo proto tcp from any to any port 1:65535  # re-route outgoing tcp
+pass out  route-to $lo proto udp from any to any port 53  # re-route outgoing udp 
 pass out proto udp from any to {{ .cnDNS }} # skip cn dns
-pass out proto tcp from any to <{{ .bypassTableName}}>  # skip cn ip + upstream proxy ip
+pass out proto tcp from any to <{{ .bypassTable.Name}}>  # skip cn ip + upstream proxy ip
 ' | sudo pfctl -ef -
-`, map[string]interface{}{"bypassTable": pf.bypassTable.String(), "bypassTableName": pf.bypassTable.Name,
+`, map[string]interface{}{"bypassTable": pf.bypassTable,
 		"snetHost": snetHost, "snetPort": snetPort, "cnDNS": cnDNS, "dnsPort": dnsPort})
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 	if _, err := utils.Sh(cmd); err != nil {

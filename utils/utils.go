@@ -10,7 +10,6 @@ import (
 
 func Sh(cmds ...string) (result string, err error) {
 	cmdStr := strings.Join(cmds, " ")
-	log.Println(cmdStr)
 	cmd := exec.Command("sh", "-c", cmdStr)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
