@@ -3,6 +3,13 @@ all: build
 build:
 	go build -ldflags "-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%dT%T%z'`" -o bin/snet
 
+build_linux_amd64:
+	GOOS=linux GOARCH=amd64  go build -ldflags "-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%dT%T%z'`" -o bin/snet_linux_amd64
+
+
+build_darwin_amd64:
+	GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%dT%T%z'`" -o bin/snet_darwin_amd64
+
 run:
 	sudo ./bin/snet -ss-passwd abc
 
