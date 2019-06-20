@@ -1,6 +1,7 @@
 package redirector
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -166,7 +167,7 @@ func GetDstAddr(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
 func NewRedirector(byPassRoutes []string) (Redirector, error) {
 
 	if _, err := utils.Sh("which ipset"); err != nil {
-		return nil, err
+		return nil, errors.New("ipset not found")
 	}
 	bypass := append(byPassRoutes, whitelistCIDR...)
 	ipset := &IPSet{Name: setName, bypassCidrs: bypass}
