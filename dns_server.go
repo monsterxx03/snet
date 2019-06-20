@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -94,7 +95,7 @@ func (s *DNS) Run() error {
 	if err != nil {
 		return err
 	}
-	LOG.Info("listen on udp:", s.udpAddr)
+	log.Println("listen on udp:", s.udpAddr)
 	defer s.udpListener.Close()
 	for {
 		b := make([]byte, 1024)
@@ -105,7 +106,7 @@ func (s *DNS) Run() error {
 		go func(uaddr *net.UDPAddr, data []byte) {
 			err := s.handle(uaddr, data)
 			if err != nil {
-				LOG.Err(err)
+				log.Println(err)
 			}
 		}(uaddr, b[:n])
 	}
@@ -143,7 +144,6 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	}
 	for _, t := range s.disableQTypes {
 		if strings.ToLower(t) == strings.ToLower(dnsQuery.QType.String()) {
-			LOG.Debug("disabled qtype", t, "for", dnsQuery.QDomain)
 			resp := GetEmptyDNSResp(data)
 			if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
 				return err
@@ -152,7 +152,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		}
 	}
 	if s.badDomain(dnsQuery.QDomain) {
-		LOG.Info("block ad host", dnsQuery.QDomain)
+		// log.Println("block ad host", dnsQuery.QDomain)
 		// return 127.0.0.1 for this host
 		resp := GetBlockDNSResp(data, dnsQuery.QDomain)
 		if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
@@ -163,10 +163,10 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if s.cache != nil {
 		cachedData := s.cache.Get(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType))
 		if cachedData != nil {
-			LOG.Debug("dns cache hit:", dnsQuery.QDomain)
+			// log.Println("dns cache hit:", dnsQuery.QDomain)
 			resp := cachedData.([]byte)
 			if len(resp) <= 2 {
-				LOG.Err("invalid cached data", resp, dnsQuery.QDomain, dnsQuery.QType.String())
+				log.Println("invalid cached data", resp, dnsQuery.QDomain, dnsQuery.QType.String())
 			} else {
 				// rewrite first 2 bytes(dns id)
 				resp[0] = data[0]
@@ -185,11 +185,11 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			var err error
 			cnData, err = s.queryCN(data)
 			if err != nil {
-				LOG.Warn("failed to query CN dns:", dnsQuery, err)
+				log.Println("failed to query CN dns:", dnsQuery, err)
 			}
 		}(data)
 	} else {
-		LOG.Debug("skip cn-dns for", dnsQuery.QDomain)
+		log.Println("skip cn-dns for", dnsQuery.QDomain)
 	}
 	wg.Add(1)
 	go func(data []byte) {
@@ -197,7 +197,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		var err error
 		fqData, err = s.queryFQ(data)
 		if err != nil {
-			LOG.Warn("failed to query fq dns:", dnsQuery, err)
+			log.Println("failed to query fq dns:", dnsQuery, err)
 		}
 	}(data)
 
@@ -208,14 +208,12 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		if err != nil {
 			return err
 		}
-		LOG.Debug("cn", cnMsg)
 	}
 	if len(fqData) > 0 {
 		fqMsg, err = s.parse(fqData)
 		if err != nil {
 			return err
 		}
-		LOG.Debug("fq", fqMsg)
 	}
 	var raw []byte
 	useMsg := cnMsg

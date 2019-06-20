@@ -8,7 +8,7 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 ## Features
 
 - SS/http-tunnel as upstream server
-- Sytemwide tcp proxy (via iptables redirect) on linux desktop/server
+- Sytemwide tcp proxy (via iptables redirect) on linux desktop/server, MacOS desktop
 - Works on openwrt router
 - Bypass traffic in China
 - Handle DNS in the way like ChinaDNS, so website have CDN out of China won't be redirected to their overseas site
@@ -17,13 +17,27 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 
 ## Limation:
 
-- linux only (tested on ubuntu 18.04 & manjaro && openwrt)
 - tcp only (but dns is handled)
 - ipv4 only
 
+## Tested on:
+
+Desktop:
+
+- manjaro
+- ubuntu 18.04
+- MacOS 10.13.6
+
+Router:
+
+- hiwifi2
+- ubnt er-x
+
 ## Usage
 
-Ensure **iptables** and **ipset** installed in your system.
+For linux: ensure **iptables** and **ipset** installed in your system.
+
+For macos: pfctl is included by default, no extra dependences.
 
 Example config.json:
 
@@ -61,25 +75,25 @@ Since `snet` will modify iptables, root privilege is required.
 
 test:
 
-- go to `whatsmyip.com`, ip should be your ss server ip.
-- go to `myip.ipip.net`, ip should be your local ip in China.
+- curl `ifconfig.me`, ip should be your ss server ip.
+- curl `myip.ipip.net`, ip should be your local ip in China.
 
-If you want to use it on openwrt, change `mode` to `router`, and listen-host should be your router's ip or `0.0.0.0`
+If you want to use it on router, change `mode` to `router`, and listen-host should be your router's ip or `0.0.0.0`
 
 ## Notice
 
-If crash or force killed(kill -9), snet will have no chance to cleanup iptables, it will make you have no internet access.
+If crash or force killed(kill -9), snet will have no chance to cleanup iptables/pf rules, it will make you have no internet access.
 
-You need to clean them manually(or restart snet, it will try to cleanup).
+You need to clean them manually(If restart snet, it will try to cleanup).
 
-Way 1:
-
-    sudo ./snet -clean -v
-
-Way 2 (if you're sure no useful iptable rules on your system):
+Linux:
 
     sudo iptables -t nat -F  
     # if you install docker, docker's iptable rules will be flushed as well, just restart docker it will recreate them.
+
+MacOS:
+
+    sudo pfctl -d
 
 ## Known issue:
 
@@ -87,7 +101,3 @@ Way 2 (if you're sure no useful iptable rules on your system):
 If it's first nameserver, dns query will bypass `snet`(since I didn't handle ipv6), you need to disable ipv6 or put it on second line.
 - Chrome's cache for google.com is wired.If you can visit youtube.com or twitter.com, but can't open google.com, try to restart chrome to clean dns cache.
 - cn-dns should be different with the one in your /et/resolv.conf, otherwise dns lookup will by pass snet (iptable rules in SNET chain)
-
-## TODO:
-
-- Stats api

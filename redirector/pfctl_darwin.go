@@ -66,10 +66,9 @@ pass out on $dev route-to $lo proto udp from $dev to any port 53  # re-route out
 pass out proto udp from any to {{ .cnDNS }} # skip cn dns
 pass out proto tcp from any to <{{ .bypassTable.Name}}>  # skip cn ip + upstream proxy ip
 ' | sudo pfctl -ef -
-`, map[string]interface{}{"bypassTable": pf.bypassTable,
-		"snetHost": snetHost, "snetPort": snetPort, "cnDNS": cnDNS, "dnsPort": dnsPort})
+`, map[string]interface{}{"bypassTable": pf.bypassTable, "snetHost": snetHost,
+		"snetPort": snetPort, "cnDNS": cnDNS, "dnsPort": dnsPort})
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	if _, err := utils.Sh(cmd); err != nil {

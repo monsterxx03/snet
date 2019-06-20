@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"log"
 	exec "os/exec"
 	"strings"
 	"text/template"
@@ -13,7 +12,6 @@ func Sh(cmds ...string) (result string, err error) {
 	cmd := exec.Command("sh", "-c", cmdStr)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Println(string(output))
 		return string(output), err
 	}
 	return string(output), nil
