@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	exec "os/exec"
-	utils "snet/utils"
 	"strconv"
 	"strings"
 	"syscall"
+
+	utils "snet/utils"
 )
 
 const (
@@ -136,7 +138,7 @@ func GetDstAddr(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
 		addr.Multiaddr[6],
 		addr.Multiaddr[7],
 	)
-	return host, int(addr.Multiaddr[2]<<8) + int(addr.Multiaddr[3]), err
+	return host, int(addr.Multiaddr[2])<<8 + int(addr.Multiaddr[3]), err
 }
 
 func NewRedirector(byPassRoutes []string) (Redirector, error) {

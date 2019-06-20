@@ -58,7 +58,6 @@ func (s *Server) Run() error {
 
 func (s *Server) handle(conn *net.TCPConn) error {
 	dstHost, dstPort, err := redirector.GetDstAddr(conn)
-	fmt.Println(dstHost, dstPort)
 	if err != nil {
 		return err
 	}
