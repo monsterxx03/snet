@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"snet/redirector"
@@ -28,11 +29,8 @@ var (
 )
 
 var configFile = flag.String("config", "", "json cofig file path")
-var verbose = flag.Bool("v", false, "verbose logging")
 var version = flag.Bool("version", false, "print version only")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
-
-var LOG *Logger
 
 func main() {
 	flag.Parse()
@@ -44,15 +42,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	var logLevel LogLevel
 	var err error
-
-	if *verbose {
-		logLevel = LOG_DEBUG
-	} else {
-		logLevel = LOG_INFO
-	}
-	LOG = NewLogger(logLevel)
 
 	redir, err := redirector.NewRedirector(Chnroutes)
 	exitOnError(err)
@@ -78,7 +68,9 @@ func main() {
 	proxyIP := s.proxy.GetProxyIP()
 	exitOnError(err)
 	exitOnError(redir.ByPass(proxyIP.String()))
-	redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS)
+	if err := redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS); err != nil {
+		log.Fatal(err)
+	}
 
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
 	dns, err := NewDNS(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.BlockHostFile)
@@ -93,26 +85,26 @@ func main() {
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP)
-		LOG.Info("Got signal:", <-c)
+		log.Println("Got signal:", <-c)
 		errCh <- nil
 	}()
 
 	if err := <-errCh; err != nil {
-		LOG.Err(err)
+		log.Println(err)
 	}
 	redir.CleanupRules(config.Mode, config.LHost, config.LPort, dnsPort)
 	redir.Destroy()
 
 	if err := dns.Shutdown(); err != nil {
-		LOG.Err("Error during shutdown dns server", err)
+		log.Println("Error during shutdown dns server", err)
 	}
 	if err := s.Shutdown(); err != nil {
-		LOG.Err("Error during shutdown server", err)
+		log.Println("Error during shutdown server", err)
 	}
 }
 
 func exitOnError(err error) {
 	if err != nil {
-		LOG.Exit(err)
+		log.Fatal(err)
 	}
 }

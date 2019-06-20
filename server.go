@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 
 	"snet/proxy"
@@ -23,7 +24,7 @@ func NewServer(c *Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	LOG.Info("Listen on tcp:", addr)
+	log.Println("Listen on tcp:", addr)
 
 	if err != nil {
 		return nil, err
@@ -50,7 +51,7 @@ func (s *Server) Run() error {
 		go func(conn *net.TCPConn) {
 			defer conn.Close()
 			if err := s.handle(conn); err != nil {
-				LOG.Err(err)
+				log.Println(err)
 			}
 		}(conn)
 	}

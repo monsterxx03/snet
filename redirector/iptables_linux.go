@@ -57,6 +57,7 @@ func (s *IPSet) Init() error {
 }
 
 func (s *IPSet) Destroy() {
+	// ignore error, since this function will be called during starting
 	utils.Sh("ipset destroy", s.Name)
 }
 
@@ -72,24 +73,42 @@ func (r *IPTables) SetupRules(mode string, snetHost string, snetPort int, dnsPor
 	r.CleanupRules(mode, snetHost, snetPort, dnsPort)
 	port := strconv.Itoa(snetPort)
 	dport := strconv.Itoa(dnsPort)
-	utils.Sh("iptables -t nat -N", chainName)
+	if _, err := utils.Sh("iptables -t nat -N", chainName); err != nil {
+		return err
+	}
 	// by pass all tcp traffic for ips in BYPASS_SNET set
-	utils.Sh("iptables -t nat -A ", chainName, "-p tcp -m set --match-set", r.ipset.Name, "dst -j RETURN")
+	if _, err := utils.Sh("iptables -t nat -A ", chainName, "-p tcp -m set --match-set", r.ipset.Name, "dst -j RETURN"); err != nil {
+		return err
+	}
 	// redirect all tcp traffic in SNET chain to local proxy port
-	utils.Sh("iptables -t nat -A ", chainName, "-p tcp -j REDIRECT --to-ports", port)
+	if _, err := utils.Sh("iptables -t nat -A ", chainName, "-p tcp -j REDIRECT --to-ports", port); err != nil {
+		return err
+	}
 	// send all output tcp traffic to SNET chain
-	utils.Sh("iptables -t nat -A OUTPUT -p tcp -j", chainName)
+	if _, err := utils.Sh("iptables -t nat -A OUTPUT -p tcp -j", chainName); err != nil {
+		return err
+	}
 	if mode == modeLocal {
 		// avoid outgoing cn dns query be redirected to snet, it's a loop!
-		utils.Sh("iptables -t nat -A", chainName, "-d", cnDNS, "-j RETURN")
+		if _, err := utils.Sh("iptables -t nat -A", chainName, "-d", cnDNS, "-j RETURN"); err != nil {
+			return err
+		}
 		// redirect all outgoing dns query to snet(except cn dns)
-		utils.Sh("iptables -t nat -A", chainName, "-p udp --dport 53 -j DNAT --to-destination", snetHost+":"+dport)
+		if _, err := utils.Sh("iptables -t nat -A", chainName, "-p udp --dport 53 -j DNAT --to-destination", snetHost+":"+dport); err != nil {
+			return err
+		}
 
-		utils.Sh("iptables -t nat -A OUTPUT -p udp --dport 53 -j", chainName)
+		if _, err := utils.Sh("iptables -t nat -A OUTPUT -p udp --dport 53 -j", chainName); err != nil {
+			return err
+		}
 	}
 	if mode == modeRouter {
-		utils.Sh("iptables -t nat -I PREROUTING -p tcp -j", chainName)
-		utils.Sh("iptables -t nat -I PREROUTING -p udp --dport 53 -j REDIRECT --to-port", dport)
+		if _, err := utils.Sh("iptables -t nat -I PREROUTING -p tcp -j", chainName); err != nil {
+			return err
+		}
+		if _, err := utils.Sh("iptables -t nat -I PREROUTING -p udp --dport 53 -j REDIRECT --to-port", dport); err != nil {
+			return err
+		}
 	}
 	return nil
 }
