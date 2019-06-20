@@ -46,14 +46,19 @@ Example config.json:
         "listen-port": 1111,
         "proxy-type": "ss",
         "proxy-timeout":  5,
+
+        # config used when proxy-type is "http"
         "http-proxy-host": "",
         "http-proxy-port": 8080,
         "http-proxy-auth-user": "",
         "http-proxy-auth-password": "",
+
+        # config used when proxy-type is "ss"
         "ss-host": "ss.example.com",
         "ss-port": 8080,
         "ss-chpier-method": "aes-256-cfb",
         "ss-passwd": "passwd",
+
         "cn-dns": "114.114.114.114",  # dns in China
         "fq-dns": "8.8.8.8",  # clean dns out of China
         "enable-dns-cache": true,
@@ -69,7 +74,7 @@ supported proxy-type:
 - ss: use ss as upstream server
 - http: use http proxy server as upstream server(should support `CONNECT` method, eg: squid)
 
-Since `snet` will modify iptables, root privilege is required. 
+Since `snet` will modify iptables/pf, root privilege is required. 
 
 `sudo ./snet -config config.json`
 
@@ -84,7 +89,7 @@ If you want to use it on router, change `mode` to `router`, and listen-host shou
 
 If crash or force killed(kill -9), snet will have no chance to cleanup iptables/pf rules, it will make you have no internet access.
 
-You need to clean them manually(If restart snet, it will try to cleanup).
+You need to clean them manually(If restart snet, it will try to cleanup) or restart your laptop :(
 
 Linux:
 
