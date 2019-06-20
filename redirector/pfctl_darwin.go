@@ -58,10 +58,11 @@ func (pf *PacketFilter) SetupRules(mode string, snetHost string, snetPort int, d
 echo '
 table <{{ .bypassTable.Name }}> { {{ .bypassTable.CIDRS }} }
 lo="lo0"
-rdr on $lo proto tcp from any to any port 1:65535 -> {{.snetHost }} port {{ .snetPort }}  # let proxy handle tcp 
-rdr on $lo proto udp from any to any port 53 -> {{ .snetHost }} port {{ .dnsPort }}  # let proxy handle dns query
-pass out  route-to $lo proto tcp from any to any port 1:65535  # re-route outgoing tcp
-pass out  route-to $lo proto udp from any to any port 53  # re-route outgoing udp 
+dev="en0"
+rdr on $lo proto tcp from $dev to any port 1:65535 -> {{.snetHost }} port {{ .snetPort }}  # let proxy handle tcp 
+rdr on $lo proto udp from $dev to any port 53 -> {{ .snetHost }} port {{ .dnsPort }}  # let proxy handle dns query
+pass out on $dev route-to $lo proto tcp from $dev to any port 1:65535  # re-route outgoing tcp
+pass out on $dev route-to $lo proto udp from $dev to any port 53  # re-route outgoing udp 
 pass out proto udp from any to {{ .cnDNS }} # skip cn dns
 pass out proto tcp from any to <{{ .bypassTable.Name}}>  # skip cn ip + upstream proxy ip
 ' | sudo pfctl -ef -
