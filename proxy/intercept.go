@@ -59,7 +59,7 @@ func parseServerNameFromSNI(data []byte) (string, error) {
 			index += 2 + extLen
 		}
 	}
-	return "", nil
+	return "", errors.New("SNI block not found")
 }
 
 type Intercept struct {
