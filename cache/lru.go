@@ -1,5 +1,5 @@
 // LRU cache for dns with ttl
-package main
+package cache
 
 import (
 	"container/list"

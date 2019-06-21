@@ -6,8 +6,10 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"snet/redirector"
 	"syscall"
+
+	"snet/dns"
+	"snet/redirector"
 )
 
 //go:generate go run chnroutes_generate.go
@@ -73,7 +75,7 @@ func main() {
 	}
 
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
-	dns, err := NewDNS(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.BlockHostFile)
+	dns, err := dns.NewServer(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.BlockHostFile, Chnroutes)
 	exitOnError(err)
 	go func() {
 		errCh <- dns.Run()

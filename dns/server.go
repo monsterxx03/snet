@@ -1,4 +1,4 @@
-package main
+package dns
 
 import (
 	"bufio"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"snet/bloomfilter"
+	"snet/cache"
 	"snet/utils"
 )
 
@@ -34,22 +35,18 @@ type DNS struct {
 	blockHostsBF     *bloomfilter.Bloomfilter
 	blockHosts       []string
 	originalResolver []byte
-	ipchecker        *IPChecker
-	cache            *LRU
+	chnroutes        []*net.IPNet
+	cache            *cache.LRU
 }
 
-func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, BlockHostFile string) (*DNS, error) {
+func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, BlockHostFile string, chnroutes []string) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
 	}
-	ipchecker, err := NewIPChecker()
-	if err != nil {
-		return nil, err
-	}
-	var cache *LRU
+	var c *cache.LRU
 	if enableCache {
-		cache, err = NewLRU(cacheSize)
+		c, err = cache.NewLRU(cacheSize)
 		if err != nil {
 			return nil, err
 		}
@@ -75,6 +72,15 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, Dis
 			bf.Add([]byte(line))
 		}
 	}
+
+	cnRoutes := make([]*net.IPNet, 0, len(chnroutes))
+	for _, route := range chnroutes {
+		_, ipnet, err := net.ParseCIDR(route)
+		if err != nil {
+			return nil, err
+		}
+		cnRoutes = append(cnRoutes, ipnet)
+	}
 	return &DNS{
 		udpAddr:       uaddr,
 		cnDNS:         cnDNS,
@@ -84,8 +90,8 @@ func NewDNS(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, Dis
 		forceFQ:       ForceFq,
 		blockHostsBF:  bf,
 		blockHosts:    lines,
-		ipchecker:     ipchecker,
-		cache:         cache,
+		chnroutes:     cnRoutes,
+		cache:         c,
 	}, nil
 }
 
@@ -129,6 +135,15 @@ func (s *DNS) badDomain(domain string) bool {
 			if host == domain {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func (s *DNS) isCNIP(ip net.IP) bool {
+	for _, ipnet := range s.chnroutes {
+		if ipnet.Contains(ip) {
+			return true
 		}
 	}
 	return false
@@ -217,7 +232,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	}
 	var raw []byte
 	useMsg := cnMsg
-	if cnMsg != nil && len(cnMsg.ARecords) >= 1 && s.ipchecker.InChina(cnMsg.ARecords[0].IP) {
+	if cnMsg != nil && len(cnMsg.ARecords) >= 1 && s.isCNIP(cnMsg.ARecords[0].IP) {
 		// if cn dns have response and it's an cn ip, we think it's a site in China
 		raw = cnData
 	} else {
