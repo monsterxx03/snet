@@ -24,7 +24,7 @@ func NewServer(c *Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Listen on tcp:", addr)
+	log.Println("Proxy server listen on tcp:", addr)
 
 	if err != nil {
 		return nil, err

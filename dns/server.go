@@ -101,7 +101,7 @@ func (s *DNS) Run() error {
 	if err != nil {
 		return err
 	}
-	log.Println("listen on udp:", s.udpAddr)
+	log.Println("DNS server listen on udp:", s.udpAddr)
 	defer s.udpListener.Close()
 	for {
 		b := make([]byte, 1024)
