@@ -56,36 +56,40 @@ func main() {
 	var err error
 
 	redir, err := redirector.NewRedirector(Chnroutes, l)
-	exitOnError(err)
+	exitOnError(err, nil)
 
 	if *configFile == "" {
 		fmt.Println("-config is required")
 		os.Exit(1)
 	}
 	config, err := LoadConfig(*configFile)
-	exitOnError(err)
+	exitOnError(err, nil)
 	dnsPort := config.LPort + 100
 
-	if *clean {
+	cleanupCallback := func() {
 		redir.CleanupRules(config.Mode, config.LHost, config.LPort, dnsPort)
 		redir.Destroy()
+	}
+
+	if *clean {
+		cleanupCallback()
 		os.Exit(0)
 	}
 	s, err := NewServer(config)
-	exitOnError(err)
+	exitOnError(err, nil)
 	errCh := make(chan error)
-
-	exitOnError(redir.Init())
 	proxyIP := s.proxy.GetProxyIP()
-	exitOnError(err)
-	exitOnError(redir.ByPass(proxyIP.String()))
-	if err := redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS); err != nil {
-		l.Fatal(err)
-	}
+	exitOnError(err, nil)
+
+	exitOnError(redir.Init(), nil)
+	exitOnError(redir.ByPass(proxyIP.String()), nil)
+
+	redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS)
+	exitOnError(err, cleanupCallback)
 
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
 	dns, err := dns.NewServer(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.BlockHostFile, Chnroutes, l)
-	exitOnError(err)
+	exitOnError(err, cleanupCallback)
 	go func() {
 		errCh <- dns.Run()
 	}()
@@ -103,8 +107,8 @@ func main() {
 	if err := <-errCh; err != nil {
 		l.Info(err)
 	}
-	redir.CleanupRules(config.Mode, config.LHost, config.LPort, dnsPort)
-	redir.Destroy()
+
+	cleanupCallback()
 
 	if err := dns.Shutdown(); err != nil {
 		l.Warn("Error during shutdown dns server", err)
@@ -114,8 +118,11 @@ func main() {
 	}
 }
 
-func exitOnError(err error) {
+func exitOnError(err error, cb func()) {
 	if err != nil {
+		if cb != nil {
+			cb()
+		}
 		l.Fatal(err)
 	}
 }

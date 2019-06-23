@@ -65,7 +65,7 @@ Example config.json:
         "enforce-ttl": 0,  # if > 0, will use this value otherthan A record's TTL
         "disable-qtypes": ["AAAA"], # return empty dns msg for those query types
         "force-fq": ["*.cloudfront.net"], # domain pattern matched will skip cn-dns query
-        "block-host-file": "ad_hosts", # domain name in this file will return 127.0.0.1 to client
+        "block-host-file": "", # if set, domain name in this file will return 127.0.0.1 to client
         "mode": "local"   # run on desktop: local, run on router: router
     }
 
