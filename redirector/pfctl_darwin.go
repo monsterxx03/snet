@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"unsafe"
 
+	"snet/logger"
 	"snet/utils"
 )
 
@@ -44,6 +45,7 @@ func (t *PFTable) CIDRS() string {
 
 type PacketFilter struct {
 	bypassTable *PFTable
+	l           *logger.Logger
 }
 
 func (pf *PacketFilter) Init() error {
@@ -69,9 +71,11 @@ pass out proto tcp from any to <{{ .bypassTable.Name}}>  # skip cn ip + upstream
 `, map[string]interface{}{"bypassTable": pf.bypassTable, "snetHost": snetHost,
 		"snetPort": snetPort, "cnDNS": cnDNS, "dnsPort": dnsPort})
 	if err != nil {
+		pf.l.Error(err)
 		return err
 	}
 	if _, err := utils.Sh(cmd); err != nil {
+		pf.l.Error(err)
 		return err
 	}
 	return nil
@@ -93,12 +97,12 @@ func (pf *PacketFilter) ByPass(ip string) error {
 	return nil
 }
 
-func NewRedirector(byPassRoutes []string) (Redirector, error) {
+func NewRedirector(byPassRoutes []string, l *logger.Logger) (Redirector, error) {
 	if _, err := utils.Sh("which pfctl"); err != nil {
 		return nil, err
 	}
 	bypass := append(byPassRoutes, whitelistCIDR...)
-	pfTable := &PFTable{Name: tableName, bypassCidrs: bypass}
+	pfTable := &PFTable{Name: tableName, bypassCidrs: bypass, l: l}
 	return &PacketFilter{pfTable}, nil
 }
 

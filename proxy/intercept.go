@@ -2,9 +2,10 @@ package proxy
 
 import (
 	"errors"
-	"log"
 	"net"
 	"time"
+
+	"snet/logger"
 )
 
 const (
@@ -66,10 +67,11 @@ type Intercept struct {
 	dstHost string
 	dstPort int
 	conn    *net.TCPConn
+	l       *logger.Logger
 }
 
-func NewIntercept(conn *net.TCPConn, dstHost string, dstPort int) *Intercept {
-	return &Intercept{dstHost, dstPort, conn}
+func NewIntercept(conn *net.TCPConn, dstHost string, dstPort int, l *logger.Logger) *Intercept {
+	return &Intercept{dstHost, dstPort, conn, l}
 }
 
 func (i *Intercept) explore(b []byte) {
@@ -77,9 +79,9 @@ func (i *Intercept) explore(b []byte) {
 		if b[0] == TLSRecordLayerTypeHandShake && b[5] == TLSHandshakeTypeClientHello {
 			serverName, err := parseServerNameFromSNI(b)
 			if err != nil {
-				log.Println("failed to parse server name:", err)
+				i.l.Error("failed to parse server name:", err)
 			}
-			log.Printf("https  %s %s", serverName, i.dstHost)
+			i.l.Infof("https  %s %s", serverName, i.dstHost)
 		}
 	}
 }

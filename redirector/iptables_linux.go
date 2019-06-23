@@ -4,14 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	exec "os/exec"
 	"strconv"
 	"strings"
 	"syscall"
 
-	utils "snet/utils"
+	"snet/logger"
+	"snet/utils"
 )
 
 const (
@@ -23,6 +23,8 @@ const (
 type IPSet struct {
 	Name        string
 	bypassCidrs []string
+
+	l *logger.Logger
 }
 
 func (s *IPSet) Add(ip string) error {
@@ -51,7 +53,7 @@ func (s *IPSet) Init() error {
 	}()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Fatal(string(out))
+		s.l.Error(string(out))
 		return err
 	}
 	return nil
@@ -64,6 +66,7 @@ func (s *IPSet) Destroy() {
 
 type IPTables struct {
 	ipset *IPSet
+	l     *logger.Logger
 }
 
 func (r *IPTables) Init() error {
@@ -164,12 +167,12 @@ func GetDstAddr(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
 	return host, int(addr.Multiaddr[2])<<8 + int(addr.Multiaddr[3]), err
 }
 
-func NewRedirector(byPassRoutes []string) (Redirector, error) {
+func NewRedirector(byPassRoutes []string, l *logger.Logger) (Redirector, error) {
 
 	if _, err := utils.Sh("which ipset"); err != nil {
 		return nil, errors.New("ipset not found")
 	}
 	bypass := append(byPassRoutes, whitelistCIDR...)
 	ipset := &IPSet{Name: setName, bypassCidrs: bypass}
-	return &IPTables{ipset}, nil
+	return &IPTables{ipset, l}, nil
 }

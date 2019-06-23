@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"reflect"
 	"strings"
@@ -168,7 +167,6 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 	qdcount := binary.BigEndian.Uint16(data[4:6])
 	// multi query is allowed(qdcount >1), but I didn't see this in real life(just don't handle it)!
 	if qdcount > 1 {
-		log.Println("multi query found,don't support")
 		return nil, errors.New("mutil query in a dns message found")
 	}
 	ancount := binary.BigEndian.Uint16(data[6:8])

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 
 	"snet/proxy"
@@ -24,7 +23,7 @@ func NewServer(c *Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Proxy server listen on tcp:", addr)
+	l.Info("Proxy server listen on tcp:", addr)
 
 	if err != nil {
 		return nil, err
@@ -51,7 +50,7 @@ func (s *Server) Run() error {
 		go func(conn *net.TCPConn) {
 			defer conn.Close()
 			if err := s.handle(conn); err != nil {
-				log.Println(err)
+				l.Warn(err)
 			}
 		}(conn)
 	}
@@ -67,7 +66,7 @@ func (s *Server) handle(conn *net.TCPConn) error {
 		return err
 	}
 	// if intercept is enabled, use i to replace conn
-	// i := proxy.NewIntercept(conn, dstHost, dstPort)
+	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
 	go s.proxy.Pipe(conn, remoteConn)
 	s.proxy.Pipe(remoteConn, conn)
 	return nil

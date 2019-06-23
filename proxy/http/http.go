@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	proxy "snet/proxy"
 	"time"
+
+	"snet/proxy"
 )
 
 type Config struct {

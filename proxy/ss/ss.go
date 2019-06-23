@@ -2,10 +2,12 @@ package ss
 
 import (
 	"fmt"
-	ss "github.com/shadowsocks/shadowsocks-go/shadowsocks"
 	"net"
-	proxy "snet/proxy"
 	"time"
+
+	ss "github.com/shadowsocks/shadowsocks-go/shadowsocks"
+
+	"snet/proxy"
 )
 
 type Config struct {

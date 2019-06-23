@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"snet/dns"
+	"snet/logger"
 	"snet/redirector"
 )
 
@@ -23,6 +23,7 @@ const (
 	DefaultCNDNS        = "223.6.6.6"
 	DefaultFQDNS        = "8.8.8.8"
 	DefaultMode         = "local"
+	DefaultLogLevel     = logger.INFO
 )
 
 var (
@@ -31,8 +32,10 @@ var (
 )
 
 var configFile = flag.String("config", "", "json cofig file path")
-var version = flag.Bool("version", false, "print version only")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
+var version = flag.Bool("version", false, "print version only")
+var verbose = flag.Bool("v", false, "verbose output")
+var l *logger.Logger
 
 func main() {
 	flag.Parse()
@@ -44,9 +47,15 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *verbose {
+		l = logger.NewLogger(logger.DEBUG)
+	} else {
+		l = logger.NewLogger(DefaultLogLevel)
+	}
+
 	var err error
 
-	redir, err := redirector.NewRedirector(Chnroutes)
+	redir, err := redirector.NewRedirector(Chnroutes, l)
 	exitOnError(err)
 
 	if *configFile == "" {
@@ -71,11 +80,11 @@ func main() {
 	exitOnError(err)
 	exitOnError(redir.ByPass(proxyIP.String()))
 	if err := redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS); err != nil {
-		log.Fatal(err)
+		l.Fatal(err)
 	}
 
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
-	dns, err := dns.NewServer(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.BlockHostFile, Chnroutes)
+	dns, err := dns.NewServer(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.BlockHostFile, Chnroutes, l)
 	exitOnError(err)
 	go func() {
 		errCh <- dns.Run()
@@ -87,26 +96,26 @@ func main() {
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP)
-		log.Println("Got signal:", <-c)
+		l.Info("Got signal:", <-c)
 		errCh <- nil
 	}()
 
 	if err := <-errCh; err != nil {
-		log.Println(err)
+		l.Info(err)
 	}
 	redir.CleanupRules(config.Mode, config.LHost, config.LPort, dnsPort)
 	redir.Destroy()
 
 	if err := dns.Shutdown(); err != nil {
-		log.Println("Error during shutdown dns server", err)
+		l.Warn("Error during shutdown dns server", err)
 	}
 	if err := s.Shutdown(); err != nil {
-		log.Println("Error during shutdown server", err)
+		l.Warn("Error during shutdown server", err)
 	}
 }
 
 func exitOnError(err error) {
 	if err != nil {
-		log.Fatal(err)
+		l.Fatal(err)
 	}
 }
