@@ -3,6 +3,7 @@
     "listen-port": 1111,
     "proxy-type": "ss",
     "proxy-timeout": 5,
+    "proxy-scope": "bypassCN",
     "http-proxy-host": "",
     "http-proxy-port": 8080,
     "http-proxy-auth-user": "",

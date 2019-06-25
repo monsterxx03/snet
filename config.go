@@ -10,11 +10,28 @@ import (
 	"time"
 )
 
+const (
+	proxyScopeBypassCN = "bypassCN"
+	proxyScopeGlobal   = "global"
+)
+
+const (
+	DefaultLHost        = "127.0.0.1"
+	DefaultLPort        = 1111
+	DefaultProxyTimeout = 5
+	DefaultProxyType    = "ss"
+	DefaultProxyScope   = proxyScopeBypassCN
+	DefaultCNDNS        = "223.6.6.6"
+	DefaultFQDNS        = "8.8.8.8"
+	DefaultMode         = "local"
+)
+
 type Config struct {
 	LHost                 string   `json:"listen-host"`
 	LPort                 int      `json:"listen-port"`
 	ProxyType             string   `json:"proxy-type"`
 	ProxyTimeout          int      `json:"proxy-timeout"`
+	ProxyScope            string   `json:"proxy-scope"`
 	HttpProxyHost         string   `json:"http-proxy-host"`
 	HttpProxyPort         int      `json:"http-proxy-port"`
 	HttpProxyAuthUser     string   `json:"http-proxy-auth-user"`
@@ -44,6 +61,16 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 	if config.ProxyType == "" {
 		return nil, errors.New("missing proxy-type")
+	}
+	switch config.ProxyScope {
+	case "":
+		config.ProxyScope = proxyScopeBypassCN
+	case proxyScopeGlobal, proxyScopeBypassCN:
+	default:
+		return nil, errors.New("invalid proxy-scope " + config.ProxyScope)
+	}
+	if config.ProxyScope == "" {
+		config.ProxyScope = DefaultProxyScope
 	}
 	if config.LHost == "" {
 		config.LHost = DefaultLHost

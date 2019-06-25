@@ -46,6 +46,8 @@ Example config.json:
         "listen-port": 1111,
         "proxy-type": "ss",
         "proxy-timeout":  5,
+        # `bypassCN` or `global`, default to `bypassCN`
+        "proxy-scope": "bypassCN",
 
         # config used when proxy-type is "http"
         "http-proxy-host": "",
@@ -56,7 +58,8 @@ Example config.json:
         # config used when proxy-type is "ss"
         "ss-host": "ss.example.com",
         "ss-port": 8080,
-        "ss-chpier-method": "aes-256-cfb", # https://github.com/shadowsocks/shadowsocks-go/blob/1.2.1/shadowsocks/encrypt.go#L159
+        # https://github.com/shadowsocks/shadowsocks-go/blob/1.2.1/shadowsocks/encrypt.go#L159
+        "ss-chpier-method": "aes-256-cfb",
         "ss-passwd": "passwd",
 
         "cn-dns": "114.114.114.114",  # dns in China

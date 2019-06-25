@@ -16,14 +16,7 @@ import (
 //go:generate go run ad_hosts_generate.go
 
 const (
-	DefaultLHost        = "127.0.0.1"
-	DefaultLPort        = 1111
-	DefaultProxyTimeout = 5
-	DefaultProxyType    = "ss"
-	DefaultCNDNS        = "223.6.6.6"
-	DefaultFQDNS        = "8.8.8.8"
-	DefaultMode         = "local"
-	DefaultLogLevel     = logger.INFO
+	DefaultLogLevel = logger.INFO
 )
 
 var (
@@ -55,9 +48,6 @@ func main() {
 
 	var err error
 
-	redir, err := redirector.NewRedirector(Chnroutes, l)
-	exitOnError(err, nil)
-
 	if *configFile == "" {
 		fmt.Println("-config is required")
 		os.Exit(1)
@@ -65,6 +55,15 @@ func main() {
 	config, err := LoadConfig(*configFile)
 	exitOnError(err, nil)
 	dnsPort := config.LPort + 100
+
+	var bypassCidrs []string
+	if config.ProxyScope == proxyScopeBypassCN {
+		bypassCidrs = Chnroutes
+	} else {
+		bypassCidrs = []string{}
+	}
+	redir, err := redirector.NewRedirector(bypassCidrs, l)
+	exitOnError(err, nil)
 
 	cleanupCallback := func() {
 		redir.CleanupRules(config.Mode, config.LHost, config.LPort, dnsPort)
