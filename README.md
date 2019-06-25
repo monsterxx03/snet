@@ -81,12 +81,14 @@ Since `snet` will modify iptables/pf, root privilege is required.
 
 `sudo ./snet -config config.json`
 
-test:
+Test (proxy-scope = bypassCN):
 
 - curl `ifconfig.me`, ip should be your ss server ip.
 - curl `myip.ipip.net`, ip should be your local ip in China.
 
-If you want to use it on router, change `mode` to `router`, and listen-host should be your router's ip or `0.0.0.0`
+If proxy-scope is `global`, both should return ss server ip.
+
+If you use it on router, change `mode` to `router`, and listen-host should be your router's ip or `0.0.0.0`
 
 ## Notice
 
