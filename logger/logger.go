@@ -26,7 +26,7 @@ func (l Level) String() string {
 	case INFO:
 		return "Info"
 	case WARNING:
-		return "WARN"
+		return "Warn"
 	case ERROR:
 		return "Error"
 	case FATAL:
