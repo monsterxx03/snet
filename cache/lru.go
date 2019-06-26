@@ -20,7 +20,7 @@ type LRU struct {
 	capacity int
 	deque    *list.List
 	items    map[interface{}]*list.Element
-	sync.RWMutex
+	lock     *sync.Mutex
 }
 
 func NewLRU(capacity int) (*LRU, error) {
@@ -31,12 +31,13 @@ func NewLRU(capacity int) (*LRU, error) {
 		capacity: capacity,
 		deque:    list.New(),
 		items:    make(map[interface{}]*list.Element),
+		lock:     new(sync.Mutex),
 	}, nil
 }
 
 func (c *LRU) Get(key interface{}) interface{} {
-	c.RLock()
-	defer c.RUnlock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
 
 	if v, ok := c.items[key]; ok {
 		if v.Value.(*entry).ttl.Before(time.Now()) {
@@ -51,8 +52,8 @@ func (c *LRU) Get(key interface{}) interface{} {
 }
 
 func (c *LRU) Add(key, value interface{}, ttl time.Time) bool {
-	c.Lock()
-	defer c.Unlock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
 
 	if v, ok := c.items[key]; ok {
 		v.Value.(*entry).value = value
