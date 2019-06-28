@@ -3,6 +3,7 @@
     "listen-port": 1111,
     "proxy-type": "ss",
     "proxy-timeout": 5,
+    "proxy-scope": "bypassCN",
     "http-proxy-host": "",
     "http-proxy-port": 8080,
     "http-proxy-auth-user": "",
@@ -14,5 +15,9 @@
     "cn-dns": "223.6.6.6",
     "fq-dns": "8.8.8.8",
     "enable-dns-cache": true,
+    "enforce-ttl": 0,
+    "disable-qtypes": ["AAAA", "PTR"],
+    "force-fq": ["*.cloudfront.net", "*.amazonaws.com"],
+    "block-host-file": "",
     "mode": "local"
 }
