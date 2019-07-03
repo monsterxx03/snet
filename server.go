@@ -65,6 +65,7 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	if err != nil {
 		return err
 	}
+	defer remoteConn.Close()
 	// if intercept is enabled, use i to replace conn
 	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
 	go s.proxy.Pipe(conn, remoteConn)
