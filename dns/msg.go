@@ -171,6 +171,9 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 	}
 	ancount := binary.BigEndian.Uint16(data[6:8])
 	body := data[12:]
+	if len(body) == 0 {
+		return nil, errors.New("bad dns msg")
+	}
 	queryDomainLabels := []string{}
 	var qtype uint16
 	var qclass uint16
