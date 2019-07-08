@@ -32,6 +32,7 @@ type DNS struct {
 	enforceTTL       uint32
 	disableQTypes    []string
 	forceFQ          []string
+	hostMap          map[string]string
 	blockHostsBF     *bloomfilter.Bloomfilter
 	blockHosts       []string
 	originalResolver []byte
@@ -40,7 +41,7 @@ type DNS struct {
 	l                *logger.Logger
 }
 
-func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, BlockHostFile string, chnroutes []string, l *logger.Logger) (*DNS, error) {
+func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, HostMap map[string]string, BlockHostFile string, chnroutes []string, l *logger.Logger) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -89,6 +90,7 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 		enforceTTL:    enforceTTL,
 		disableQTypes: DisableQTypes,
 		forceFQ:       ForceFq,
+		hostMap:       HostMap,
 		blockHostsBF:  bf,
 		blockHosts:    lines,
 		chnroutes:     cnRoutes,
@@ -168,10 +170,18 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			return nil
 		}
 	}
+	if ip, ok := s.hostMap[dnsQuery.QDomain]; ok {
+		resp := GetDNSResp(data, dnsQuery.QDomain, ip)
+		if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	if s.badDomain(dnsQuery.QDomain) {
 		s.l.Debug("block ad host", dnsQuery.QDomain)
 		// return 127.0.0.1 for this host
-		resp := GetBlockDNSResp(data, dnsQuery.QDomain)
+		resp := GetDNSResp(data, dnsQuery.QDomain, "127.0.0.1")
 		if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
 			return err
 		}

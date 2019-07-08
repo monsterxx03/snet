@@ -78,7 +78,7 @@ func GetEmptyDNSResp(queryData []byte) []byte {
 	return resp
 }
 
-func GetBlockDNSResp(queryData []byte, queryDomain string) []byte {
+func GetDNSResp(queryData []byte, queryDomain string, ip string) []byte {
 	// TODO ugly, need to rewrite dns parser
 	labelLen := 0
 	for _, label := range strings.Split(queryDomain, ".") {
@@ -107,9 +107,10 @@ func GetBlockDNSResp(queryData []byte, queryDomain string) []byte {
 	resp[answerOffset+9] = 0x64
 	// data len
 	resp[answerOffset+11] = 0x4
-	// ip addr: 127.0.0.1
-	resp[answerOffset+12] = 0x7f
-	resp[answerOffset+15] = 0x1
+	// ip addr
+	ipbytes := net.ParseIP(ip)
+	// for ipv4, net.IP use bytes 12-15
+	copy(resp[answerOffset+12:], ipbytes[12:])
 	return resp
 }
 
