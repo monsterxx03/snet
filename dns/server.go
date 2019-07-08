@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -154,6 +155,13 @@ func (s *DNS) isCNIP(ip net.IP) bool {
 }
 
 func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
+	defer func() {
+		if r := recover(); r != nil {
+			s.l.Error("Recoverd in dns handle:\n", string(debug.Stack()))
+			s.l.Info(data)
+		}
+	}()
+
 	var wg sync.WaitGroup
 	var cnData, fqData []byte
 	var cnMsg, fqMsg *DNSMsg

@@ -157,8 +157,8 @@ func (m *DNSMsg) Equal(t *DNSMsg) error {
 }
 
 func NewDNSMsg(data []byte) (*DNSMsg, error) {
-	if len(data) == 0 {
-		return nil, errors.New("empty dns msg")
+	if len(data) < 12 {
+		return nil, fmt.Errorf("invalid dns msg: %v", data)
 	}
 	id := binary.BigEndian.Uint16(data[:2])
 	isAnswer := false

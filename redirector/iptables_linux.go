@@ -97,11 +97,11 @@ func (r *IPTables) SetupRules(mode string, snetHost string, snetPort int, dnsPor
 		if _, err := utils.Sh("iptables -t nat -A", chainName, "-d", cnDNS, "-j RETURN"); err != nil {
 			return err
 		}
-		// redirect all outgoing dns query to snet(except cn dns)
+		// redirect dns query in SNET chain to snet listen address
 		if _, err := utils.Sh("iptables -t nat -A", chainName, "-p udp --dport 53 -j DNAT --to-destination", snetHost+":"+dport); err != nil {
 			return err
 		}
-
+		// redirect all outgoing dns query to SNET chain (except cn dns)
 		if _, err := utils.Sh("iptables -t nat -A OUTPUT -p udp --dport 53 -j", chainName); err != nil {
 			return err
 		}

@@ -83,8 +83,7 @@ func main() {
 	exitOnError(redir.Init(), nil)
 	exitOnError(redir.ByPass(proxyIP.String()), nil)
 
-	redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS)
-	exitOnError(err, cleanupCallback)
+	exitOnError(redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS), cleanupCallback)
 
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
 	dns, err := dns.NewServer(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.HostMap, config.BlockHostFile, Chnroutes, l)
