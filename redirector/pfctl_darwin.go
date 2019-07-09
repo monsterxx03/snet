@@ -102,8 +102,8 @@ func NewRedirector(byPassRoutes []string, l *logger.Logger) (Redirector, error) 
 		return nil, err
 	}
 	bypass := append(byPassRoutes, whitelistCIDR...)
-	pfTable := &PFTable{Name: tableName, bypassCidrs: bypass, l: l}
-	return &PacketFilter{pfTable}, nil
+	pfTable := &PFTable{Name: tableName, bypassCidrs: bypass}
+	return &PacketFilter{pfTable, l}, nil
 }
 
 func ioctl(fd uintptr, cmd uintptr, ptr unsafe.Pointer) error {
