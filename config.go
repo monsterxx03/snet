@@ -48,6 +48,7 @@ type Config struct {
 	ForceFQ               []string          `json:"force-fq"`
 	HostMap               map[string]string `json:"host-map"`
 	BlockHostFile         string            `json:"block-host-file"`
+	BlockHosts            []string          `json:"block-hosts"`
 	Mode                  string            `json:"mode"`
 }
 

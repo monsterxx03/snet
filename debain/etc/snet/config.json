@@ -18,6 +18,8 @@
     "enforce-ttl": 0,
     "disable-qtypes": ["AAAA", "PTR"],
     "force-fq": ["*.cloudfront.net", "*.amazonaws.com"],
+    "host-map": {},
     "block-host-file": "",
+    "block-hosts": ["*.hpplay.cn"],
     "mode": "local"
 }

@@ -26,23 +26,24 @@ const (
 )
 
 type DNS struct {
-	udpAddr          *net.UDPAddr
-	udpListener      *net.UDPConn
-	cnDNS            string
-	fqDNS            string
-	enforceTTL       uint32
-	disableQTypes    []string
-	forceFQ          []string
-	hostMap          map[string]string
-	blockHostsBF     *bloomfilter.Bloomfilter
-	blockHosts       []string
-	originalResolver []byte
-	chnroutes        []*net.IPNet
-	cache            *cache.LRU
-	l                *logger.Logger
+	udpAddr              *net.UDPAddr
+	udpListener          *net.UDPConn
+	cnDNS                string
+	fqDNS                string
+	enforceTTL           uint32
+	disableQTypes        []string
+	forceFQ              []string
+	hostMap              map[string]string
+	blockHostsBF         *bloomfilter.Bloomfilter
+	blockHosts           []string
+	additionalBlockHosts []string
+	originalResolver     []byte
+	chnroutes            []*net.IPNet
+	cache                *cache.LRU
+	l                    *logger.Logger
 }
 
-func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, HostMap map[string]string, BlockHostFile string, chnroutes []string, l *logger.Logger) (*DNS, error) {
+func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, HostMap map[string]string, BlockHostFile string, AdditionalBlockHosts, chnroutes []string, l *logger.Logger) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -85,18 +86,19 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 		cnRoutes = append(cnRoutes, ipnet)
 	}
 	return &DNS{
-		udpAddr:       uaddr,
-		cnDNS:         cnDNS,
-		fqDNS:         fqDNS,
-		enforceTTL:    enforceTTL,
-		disableQTypes: DisableQTypes,
-		forceFQ:       ForceFq,
-		hostMap:       HostMap,
-		blockHostsBF:  bf,
-		blockHosts:    lines,
-		chnroutes:     cnRoutes,
-		cache:         c,
-		l:             l,
+		udpAddr:              uaddr,
+		cnDNS:                cnDNS,
+		fqDNS:                fqDNS,
+		enforceTTL:           enforceTTL,
+		disableQTypes:        DisableQTypes,
+		forceFQ:              ForceFq,
+		hostMap:              HostMap,
+		blockHostsBF:         bf,
+		blockHosts:           lines,
+		additionalBlockHosts: AdditionalBlockHosts,
+		chnroutes:            cnRoutes,
+		cache:                c,
+		l:                    l,
 	}, nil
 }
 
@@ -131,6 +133,9 @@ func (s *DNS) Shutdown() error {
 }
 
 func (s *DNS) badDomain(domain string) bool {
+	if utils.DomainMatch(domain, s.additionalBlockHosts) {
+		return true
+	}
 	// For good domain, bloomfilter can reduce lookup time
 	// from 80us -> 1us. For bad domain, lookup time will increase
 	// about 1us, worth the effort.

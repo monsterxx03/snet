@@ -86,7 +86,7 @@ func main() {
 	exitOnError(redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS), cleanupCallback)
 
 	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
-	dns, err := dns.NewServer(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.HostMap, config.BlockHostFile, Chnroutes, l)
+	dns, err := dns.NewServer(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.HostMap, config.BlockHostFile, config.BlockHosts, Chnroutes, l)
 	exitOnError(err, cleanupCallback)
 	go func() {
 		errCh <- dns.Run()

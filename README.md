@@ -72,6 +72,7 @@ Example config.json:
             "google.com": "2.2.2.2"  # map host and ip
         },
         "block-host-file": "", # if set, domain name in this file will return 127.0.0.1 to client
+        "block-hosts": ["*.hpplay.cn"], # support block hosts with wildcard
         "mode": "local"   # run on desktop: local, run on router: router
     }
 
