@@ -32,10 +32,10 @@ type Config struct {
 	ProxyType             string            `json:"proxy-type"`
 	ProxyTimeout          int               `json:"proxy-timeout"`
 	ProxyScope            string            `json:"proxy-scope"`
-	HttpProxyHost         string            `json:"http-proxy-host"`
-	HttpProxyPort         int               `json:"http-proxy-port"`
-	HttpProxyAuthUser     string            `json:"http-proxy-auth-user"`
-	HttpProxyAuthPassword string            `json:"http-proxy-auth-password"`
+	HTTPProxyHost         string            `json:"http-proxy-host"`
+	HTTPProxyPort         int               `json:"http-proxy-port"`
+	HTTPProxyAuthUser     string            `json:"http-proxy-auth-user"`
+	HTTPProxyAuthPassword string            `json:"http-proxy-auth-password"`
 	SSHost                string            `json:"ss-host"`
 	SSPort                int               `json:"ss-port"`
 	SSCphierMethod        string            `json:"ss-chpier-method"`
@@ -100,7 +100,7 @@ func genConfigByType(c *Config, proxyType string) proxy.Config {
 	case "ss":
 		return &ss.Config{Host: c.SSHost, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
 	case "http":
-		return &http.Config{Host: c.HttpProxyHost, Port: c.HttpProxyPort, AuthUser: c.HttpProxyAuthUser, AuthPassword: c.HttpProxyAuthPassword, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
+		return &http.Config{Host: c.HTTPProxyHost, Port: c.HTTPProxyPort, AuthUser: c.HTTPProxyAuthUser, AuthPassword: c.HTTPProxyAuthPassword, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
 	}
 	return nil
 }
