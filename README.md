@@ -8,7 +8,7 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 ## Features
 
 - SS/http-tunnel as upstream server
-- Sytemwide tcp proxy (via iptables redirect) on linux desktop/server, MacOS desktop
+- Sytemwide tcp proxy on linux desktop/server(iptables), MacOS desktop (pfctl)
 - Works on openwrt router
 - Bypass traffic in China
 - Handle DNS in the way like ChinaDNS, so website have CDN out of China won't be redirected to their overseas site
