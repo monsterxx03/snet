@@ -37,7 +37,6 @@ type DNS struct {
 	blockHostsBF         *bloomfilter.Bloomfilter
 	blockHosts           []string
 	additionalBlockHosts []string
-	originalResolver     []byte
 	chnroutes            []*net.IPNet
 	cache                *cache.LRU
 	l                    *logger.Logger

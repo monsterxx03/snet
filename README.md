@@ -116,6 +116,6 @@ If it's first nameserver, dns query will bypass `snet`(since I didn't handle ipv
 - Chrome's cache for google.com is wired.If you can visit youtube.com or twitter.com, but can't open google.com, try to restart chrome to clean dns cache.
 - cn-dns should be different with the one in your /et/resolv.conf, otherwise dns lookup will by pass snet (iptable rules in SNET chain)
 
-artilces:
+## artilces:
 
 - https://blog.monsterxx03.com/tags/snet/ 
