@@ -1,17 +1,16 @@
 all: build 
 
+LDFLAGS="-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%dT%T%z'`"
+
 build:
-	go build -ldflags "-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%dT%T%z'`" -o bin/snet
+	go build -ldflags $(LDFLAGS) -o bin/snet
 
 build_linux_amd64:
-	GOOS=linux GOARCH=amd64  go build -ldflags "-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%dT%T%z'`" -o bin/snet_linux_amd64
+	GOOS=linux GOARCH=amd64  go build -ldflags $(LDFLAGS) -o bin/snet_linux_amd64
 
 
 build_darwin_amd64:
-	GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%dT%T%z'`" -o bin/snet_darwin_amd64
-
-run:
-	sudo ./bin/snet -ss-passwd abc
+	GOOS=darwin GOARCH=amd64 go build -ldflags $(LDFLAGS) -o bin/snet_darwin_amd64
 
 update:
 	curl http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest -o apnic.txt
@@ -23,10 +22,10 @@ test:
 	go test --race -v $$(go list ./...| grep -v -e /vendor/)
 
 build_hiwifi:
-	GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build
+	GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build -ldflags $(LDFLAGS) -o bin/snet_mipsle_softfloat
 
 build_erx:
-	GOOS=linux GOARCH=mipsle go build
+	GOOS=linux GOARCH=mipsle go build -ldflags $(LDFLAGS) -o bin/snet_mipsle
 
 deb:
 	cp config.json.example debain/etc/snet/config.json
