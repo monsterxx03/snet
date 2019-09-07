@@ -4,6 +4,8 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
+Restart=on-failure
+RestartSec=5
 ExecStart=/usr/local/bin/snet -config /etc/snet/config.json
 
 [Install]
