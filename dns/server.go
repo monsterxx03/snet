@@ -162,7 +162,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	defer func() {
 		if r := recover(); r != nil {
 			s.l.Error("Recoverd in dns handle:\n", string(debug.Stack()))
-			s.l.Info(data)
+			s.l.Info("error:", r, "data:", data)
 		}
 	}()
 

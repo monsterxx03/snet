@@ -211,6 +211,9 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 			return nil, errors.New("Bad answer message")
 		}
 		for i := 0; i < int(ancount); i++ {
+			if len(body) == 0 {
+				continue
+			}
 			c1 := body[0]
 			c2 := body[1]
 			body = body[2:]
