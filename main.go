@@ -28,7 +28,9 @@ var (
 )
 
 var tlsserver = flag.String("tlsserver", "", "run as tls server, eg: 0.0.0.0:9999")
-var configFile = flag.String("config", "", "json cofig file path")
+var tlskey = flag.String("tlskey", "server.key", "private key used in tls")
+var tlscrt = flag.String("tlscrt", "server.pem", "cert used in tls")
+var configFile = flag.String("config", "", "json config file path, only used when working as client")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 var version = flag.Bool("version", false, "print version only")
 var verbose = flag.Bool("v", false, "verbose output")
@@ -106,7 +108,7 @@ func runClient() {
 }
 
 func runTLSServer() {
-	cert, err := tls.LoadX509KeyPair("server.pem", "server.key")
+	cert, err := tls.LoadX509KeyPair(*tlscrt, *tlskey)
 	exitOnError(err, nil)
 	config := &tls.Config{Certificates: []tls.Certificate{cert}}
 	ln, err := tls.Listen("tcp", *tlsserver, config)

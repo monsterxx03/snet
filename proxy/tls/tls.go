@@ -71,7 +71,7 @@ func (s *Server) Pipe(src, dst net.Conn) error {
 	defer dst.Close()
 	b := make([]byte, 1024)
 	for {
-		// src.SetReadDeadline(time.Now().Add(s.cfg.Timeout))
+		src.SetReadDeadline(time.Now().Add(s.cfg.Timeout))
 		n, err := src.Read(b)
 		if err != nil {
 			return err
