@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"encoding/binary"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -24,28 +27,14 @@ var (
 	buildAt string
 )
 
+var tlsserver = flag.String("tlsserver", "", "run as tls server, eg: 0.0.0.0:9999")
 var configFile = flag.String("config", "", "json cofig file path")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 var version = flag.Bool("version", false, "print version only")
 var verbose = flag.Bool("v", false, "verbose output")
 var l *logger.Logger
 
-func main() {
-	flag.Parse()
-
-	if *version {
-		fmt.Printf("Git: %s\n", sha1Ver)
-		fmt.Printf("Build at: %s\n", buildAt)
-		fmt.Printf("Chnroutes updated at: %s\n", ChnroutesTS)
-		os.Exit(0)
-	}
-
-	if *verbose {
-		l = logger.NewLogger(logger.DEBUG)
-	} else {
-		l = logger.NewLogger(DefaultLogLevel)
-	}
-
+func runClient() {
 	var err error
 
 	if *configFile == "" {
@@ -113,6 +102,88 @@ func main() {
 	}
 	if err := s.Shutdown(); err != nil {
 		l.Warn("Error during shutdown server", err)
+	}
+}
+
+func runTLSServer() {
+	cert, err := tls.LoadX509KeyPair("server.pem", "server.key")
+	exitOnError(err, nil)
+	config := &tls.Config{Certificates: []tls.Certificate{cert}}
+	ln, err := tls.Listen("tcp", *tlsserver, config)
+	exitOnError(err, nil)
+	l.Info("TLS server running:", *tlsserver)
+	defer ln.Close()
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			l.Error(err)
+			continue
+		}
+		go func(conn net.Conn) {
+			defer conn.Close()
+			b := make([]byte, 2)
+			if _, err := conn.Read(b); err != nil {
+				l.Error(err)
+				return
+			}
+			hlen := binary.BigEndian.Uint16(b)
+			b = make([]byte, int(hlen))
+			if _, err := conn.Read(b); err != nil {
+				l.Error(err)
+				return
+			}
+			host := string(b)
+			b = make([]byte, 2)
+			if _, err := conn.Read(b); err != nil {
+				l.Error(err)
+				return
+			}
+			port := int(binary.BigEndian.Uint16(b))
+
+			dstConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
+			if err != nil {
+				l.Error(err)
+				return
+			}
+			go pipe(conn, dstConn)
+			pipe(dstConn, conn)
+		}(conn)
+	}
+}
+
+func pipe(src, dst net.Conn) error {
+	defer dst.Close()
+	b := make([]byte, 1024)
+	for {
+		n, err := src.Read(b)
+		if err != nil {
+			return err
+		}
+		if _, err := dst.Write(b[:n]); err != nil {
+			return err
+		}
+	}
+}
+
+func main() {
+	flag.Parse()
+
+	if *version {
+		fmt.Printf("Git: %s\n", sha1Ver)
+		fmt.Printf("Build at: %s\n", buildAt)
+		fmt.Printf("Chnroutes updated at: %s\n", ChnroutesTS)
+		os.Exit(0)
+	}
+
+	if *verbose {
+		l = logger.NewLogger(logger.DEBUG)
+	} else {
+		l = logger.NewLogger(DefaultLogLevel)
+	}
+	if *tlsserver != "" {
+		runTLSServer()
+	} else {
+		runClient()
 	}
 }
 

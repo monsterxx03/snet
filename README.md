@@ -7,7 +7,7 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 
 ## Features
 
-- SS/http-tunnel as upstream server
+- SS/http-tunnel/tls-tunnel as upstream server
 - Sytemwide tcp proxy on linux desktop/server(iptables), MacOS desktop (pfctl)
 - Works on openwrt router
 - Bypass traffic in China
@@ -80,6 +80,7 @@ supported proxy-type:
 
 - ss: use ss as upstream server
 - http: use http proxy server as upstream server(should support `CONNECT` method, eg: squid)
+- tls: use tls tunnel as upstream server(snet -tlsserver, `openssl genrsa -out server.key 2048`, `openssl req -new -x509 -key server.key -out server.pem -days 3650`)
 
 Since `snet` will modify iptables/pf, root privilege is required. 
 

@@ -5,8 +5,9 @@ import (
 	"errors"
 	"io/ioutil"
 	"snet/proxy"
-	http "snet/proxy/http"
-	ss "snet/proxy/ss"
+	"snet/proxy/http"
+	"snet/proxy/ss"
+	"snet/proxy/tls"
 	"time"
 )
 
@@ -40,6 +41,8 @@ type Config struct {
 	SSPort                int               `json:"ss-port"`
 	SSCphierMethod        string            `json:"ss-chpier-method"`
 	SSPasswd              string            `json:"ss-passwd"`
+	TLSHost               string            `json:"tls-host"`
+	TLSPort               int               `json:"tls-port"`
 	CNDNS                 string            `json:"cn-dns"`
 	FQDNS                 string            `json:"fq-dns"`
 	EnableDNSCache        bool              `json:"enable-dns-cache"`
@@ -101,6 +104,8 @@ func genConfigByType(c *Config, proxyType string) proxy.Config {
 		return &ss.Config{Host: c.SSHost, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
 	case "http":
 		return &http.Config{Host: c.HTTPProxyHost, Port: c.HTTPProxyPort, AuthUser: c.HTTPProxyAuthUser, AuthPassword: c.HTTPProxyAuthPassword, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
+	case "tls":
+		return &tls.Config{Host: c.TLSHost, Port: c.TLSPort, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
 	}
 	return nil
 }
