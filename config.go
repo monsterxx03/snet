@@ -43,6 +43,7 @@ type Config struct {
 	SSPasswd              string            `json:"ss-passwd"`
 	TLSHost               string            `json:"tls-host"`
 	TLSPort               int               `json:"tls-port"`
+	TLSToken              string            `json:"tls-token"`
 	CNDNS                 string            `json:"cn-dns"`
 	FQDNS                 string            `json:"fq-dns"`
 	EnableDNSCache        bool              `json:"enable-dns-cache"`
@@ -105,7 +106,7 @@ func genConfigByType(c *Config, proxyType string) proxy.Config {
 	case "http":
 		return &http.Config{Host: c.HTTPProxyHost, Port: c.HTTPProxyPort, AuthUser: c.HTTPProxyAuthUser, AuthPassword: c.HTTPProxyAuthPassword, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
 	case "tls":
-		return &tls.Config{Host: c.TLSHost, Port: c.TLSPort, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
+		return &tls.Config{Host: c.TLSHost, Port: c.TLSPort, Timeout: time.Second * time.Duration(c.ProxyTimeout), Token: c.TLSToken}
 	}
 	return nil
 }

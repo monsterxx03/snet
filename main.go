@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"encoding/binary"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -30,6 +31,8 @@ var (
 var tlsserver = flag.String("tlsserver", "", "run as tls server, eg: 0.0.0.0:9999")
 var tlskey = flag.String("tlskey", "server.key", "private key used in tls")
 var tlscrt = flag.String("tlscrt", "server.pem", "cert used in tls")
+var tlstoken = flag.String("tlstoken", "", "used in tlsserver mode")
+
 var configFile = flag.String("config", "", "json config file path, only used when working as client")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 var version = flag.Bool("version", false, "print version only")
@@ -108,6 +111,9 @@ func runClient() {
 }
 
 func runTLSServer() {
+	if *tlstoken == "" {
+		exitOnError(errors.New("missing -tlstoken"), nil)
+	}
 	cert, err := tls.LoadX509KeyPair(*tlscrt, *tlskey)
 	exitOnError(err, nil)
 	config := &tls.Config{Certificates: []tls.Certificate{cert}}
@@ -128,6 +134,17 @@ func runTLSServer() {
 				l.Error(err)
 				return
 			}
+			tlen := binary.BigEndian.Uint16(b)
+			b = make([]byte, int(tlen))
+			if _, err := conn.Read(b); err != nil {
+				l.Error(err)
+				return
+			}
+			if string(b) != *tlstoken {
+				l.Error("invalid token", string(b))
+				return
+			}
+
 			hlen := binary.BigEndian.Uint16(b)
 			b = make([]byte, int(hlen))
 			if _, err := conn.Read(b); err != nil {
