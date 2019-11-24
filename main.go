@@ -145,6 +145,11 @@ func runTLSServer() {
 				return
 			}
 
+			b = make([]byte, 2)
+			if _, err := conn.Read(b); err != nil {
+				l.Error(err)
+				return
+			}
 			hlen := binary.BigEndian.Uint16(b)
 			b = make([]byte, int(hlen))
 			if _, err := conn.Read(b); err != nil {
@@ -158,7 +163,6 @@ func runTLSServer() {
 				return
 			}
 			port := int(binary.BigEndian.Uint16(b))
-
 			dstConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
 			if err != nil {
 				l.Error(err)

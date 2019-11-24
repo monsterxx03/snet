@@ -35,6 +35,22 @@ Router:
 
 ## Usage
 
+### As upstream server
+
+Only support tls tunnel when run as upstream server
+
+Generate tls key pair:
+
+- openssl genrsa -out server.key 2048
+- openssl req -new -x509 -key server.key -out server.pem -days 3650
+
+Run:
+
+./snet -tlserver 0.0.0.0:9999 -tlstoken randomstringxxx  -tlskey server.key -tlscrt server.pem
+
+
+### As client
+
 For linux: ensure **iptables** and **ipset** installed in your system.
 
 For macos: pfctl is included by default, no extra dependences.
@@ -62,6 +78,11 @@ Example config.json:
         "ss-chpier-method": "aes-256-cfb",
         "ss-passwd": "passwd",
 
+        # config used when proxy-type is "tls"
+        "tls-host": "",
+        "tls-port": 443,
+        "tls-token": "tlstoken",
+
         "cn-dns": "114.114.114.114",  # dns in China
         "fq-dns": "8.8.8.8",  # clean dns out of China
         "enable-dns-cache": true,
@@ -80,7 +101,7 @@ supported proxy-type:
 
 - ss: use ss as upstream server
 - http: use http proxy server as upstream server(should support `CONNECT` method, eg: squid)
-- tls: use tls tunnel as upstream server(snet -tlsserver, `openssl genrsa -out server.key 2048`, `openssl req -new -x509 -key server.key -out server.pem -days 3650`)
+- tls: use snet tls tunnel as upstream server
 
 Since `snet` will modify iptables/pf, root privilege is required. 
 
