@@ -25,6 +25,7 @@ jobs:
 
   build_and_upload:
     name: build and upload
+    needs: create_release
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest"]
