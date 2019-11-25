@@ -46,7 +46,7 @@ Generate tls key pair:
 
 Run:
 
-./snet -tlserver 0.0.0.0:9999 -tlstoken randomstringxxx  -tlskey server.key -tlscrt server.pem
+    ./snet -tlsserver 0.0.0.0:9999 -tlstoken randomstringxxx  -tlskey server.key -tlscrt server.pem
 
 
 ### As client
