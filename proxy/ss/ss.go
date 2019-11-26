@@ -47,12 +47,11 @@ func (s *Server) GetProxyIP() net.IP {
 func (s *Server) Dial(dstHost string, dstPort int) (net.Conn, error) {
 	dst := fmt.Sprintf("%s:%d", dstHost, dstPort)
 	ssAddr := fmt.Sprintf("%s:%d", s.Host.String(), s.cfg.Port)
-	return ss.Dial(dst, ssAddr, s.cipher.Copy())
-}
-
-func (s *Server) Pipe(src, dst net.Conn) error {
-	ss.PipeThenClose(src, dst, nil)
-	return nil
+	conn, err := ss.Dial(dst, ssAddr, s.cipher.Copy())
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 func (s *Server) Close() error {

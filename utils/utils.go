@@ -2,8 +2,14 @@ package utils
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"io"
+	"net"
 	exec "os/exec"
 	"strings"
+	"sync"
+	"syscall"
 	"text/template"
 )
 
@@ -44,4 +50,20 @@ func NamedFmt(msg string, args map[string]interface{}) (string, error) {
 		return "", err
 	}
 	return result.String(), nil
+}
+
+func Pipe(src, dst net.Conn) error {
+	var wg sync.WaitGroup
+	cp := func(r, w net.Conn) {
+		defer wg.Done()
+		_, err := io.Copy(r, w)
+		if err != nil && !errors.Is(err, syscall.EPIPE) {
+			fmt.Println(err)
+		}
+	}
+	wg.Add(2)
+	go cp(src, dst)
+	go cp(dst, src)
+	wg.Wait()
+	return nil
 }

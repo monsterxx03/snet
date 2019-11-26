@@ -79,21 +79,6 @@ func writeDst(conn net.Conn, token string, host string, port int) error {
 	return nil
 }
 
-func (s *Server) Pipe(src, dst net.Conn) error {
-	defer dst.Close()
-	b := make([]byte, 1024)
-	for {
-		src.SetReadDeadline(time.Now().Add(s.cfg.Timeout))
-		n, err := src.Read(b)
-		if err != nil {
-			return err
-		}
-		if _, err := dst.Write(b[:n]); err != nil {
-			return err
-		}
-	}
-}
-
 func (s *Server) Close() error {
 	return nil
 }

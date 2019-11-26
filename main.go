@@ -14,6 +14,7 @@ import (
 	"snet/dns"
 	"snet/logger"
 	"snet/redirector"
+	"snet/utils"
 )
 
 //go:generate go run chnroutes_generate.go
@@ -168,23 +169,11 @@ func runTLSServer() {
 				l.Error(err)
 				return
 			}
-			go pipe(conn, dstConn)
-			pipe(dstConn, conn)
+			defer dstConn.Close()
+			if err := utils.Pipe(conn, dstConn); err != nil {
+				l.Error(err)
+			}
 		}(conn)
-	}
-}
-
-func pipe(src, dst net.Conn) error {
-	defer dst.Close()
-	b := make([]byte, 1024)
-	for {
-		n, err := src.Read(b)
-		if err != nil {
-			return err
-		}
-		if _, err := dst.Write(b[:n]); err != nil {
-			return err
-		}
 	}
 }
 

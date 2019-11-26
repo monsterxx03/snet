@@ -66,21 +66,6 @@ func (s *Server) Dial(dstHost string, dstPort int) (net.Conn, error) {
 	return conn, nil
 }
 
-func (s *Server) Pipe(src, dst net.Conn) error {
-	defer dst.Close()
-	b := make([]byte, 1024)
-	for {
-		src.SetReadDeadline(time.Now().Add(10 * s.cfg.Timeout))
-		n, err := src.Read(b)
-		if err != nil {
-			return err
-		}
-		if _, err := dst.Write(b[:n]); err != nil {
-			return err
-		}
-	}
-}
-
 func (s *Server) Close() error {
 	return nil
 }

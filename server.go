@@ -6,6 +6,7 @@ import (
 
 	"snet/proxy"
 	"snet/redirector"
+	"snet/utils"
 )
 
 const (
@@ -48,7 +49,6 @@ func (s *Server) Run() error {
 			return err
 		}
 		go func(conn *net.TCPConn) {
-			defer conn.Close()
 			if err := s.handle(conn); err != nil {
 				l.Warn(err)
 			}
@@ -57,6 +57,7 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) handle(conn *net.TCPConn) error {
+	defer conn.Close()
 	dstHost, dstPort, err := redirector.GetDstAddr(conn)
 	if err != nil {
 		return err
@@ -67,8 +68,10 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	}
 	// if intercept is enabled, use i to replace conn
 	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
-	go s.proxy.Pipe(conn, remoteConn)
-	s.proxy.Pipe(remoteConn, conn)
+	defer remoteConn.Close()
+	if err := utils.Pipe(conn, remoteConn); err != nil {
+		return err
+	}
 	return nil
 }
 

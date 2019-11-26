@@ -11,7 +11,6 @@ type Proxy interface {
 	Init(c Config) error
 	GetProxyIP() net.IP
 	Dial(host string, port int) (net.Conn, error)
-	Pipe(src, dst net.Conn) error
 	Close() error
 }
 
