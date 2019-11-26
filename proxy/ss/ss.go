@@ -3,7 +3,6 @@ package ss
 import (
 	"fmt"
 	"net"
-	"time"
 
 	ss "github.com/shadowsocks/shadowsocks-go/shadowsocks"
 
@@ -15,7 +14,6 @@ type Config struct {
 	Port         int
 	CipherMethod string
 	Password     string
-	Timeout      time.Duration
 }
 
 type Server struct {

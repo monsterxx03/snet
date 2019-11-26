@@ -6,16 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"time"
 
 	"snet/proxy"
 )
 
 type Config struct {
-	Host    string
-	Port    int
-	Token   string
-	Timeout time.Duration
+	Host  string
+	Port  int
+	Token string
 }
 
 type Server struct {

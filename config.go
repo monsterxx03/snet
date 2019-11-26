@@ -8,7 +8,6 @@ import (
 	"snet/proxy/http"
 	"snet/proxy/ss"
 	"snet/proxy/tls"
-	"time"
 )
 
 const (
@@ -19,7 +18,7 @@ const (
 const (
 	DefaultLHost        = "127.0.0.1"
 	DefaultLPort        = 1111
-	DefaultProxyTimeout = 5
+	DefaultProxyTimeout = 30
 	DefaultProxyType    = "ss"
 	DefaultProxyScope   = proxyScopeBypassCN
 	DefaultCNDNS        = "223.6.6.6"
@@ -102,11 +101,11 @@ func LoadConfig(configPath string) (*Config, error) {
 func genConfigByType(c *Config, proxyType string) proxy.Config {
 	switch proxyType {
 	case "ss":
-		return &ss.Config{Host: c.SSHost, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
+		return &ss.Config{Host: c.SSHost, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd}
 	case "http":
-		return &http.Config{Host: c.HTTPProxyHost, Port: c.HTTPProxyPort, AuthUser: c.HTTPProxyAuthUser, AuthPassword: c.HTTPProxyAuthPassword, Timeout: time.Second * time.Duration(c.ProxyTimeout)}
+		return &http.Config{Host: c.HTTPProxyHost, Port: c.HTTPProxyPort, AuthUser: c.HTTPProxyAuthUser, AuthPassword: c.HTTPProxyAuthPassword}
 	case "tls":
-		return &tls.Config{Host: c.TLSHost, Port: c.TLSPort, Timeout: time.Second * time.Duration(c.ProxyTimeout), Token: c.TLSToken}
+		return &tls.Config{Host: c.TLSHost, Port: c.TLSPort, Token: c.TLSToken}
 	}
 	return nil
 }

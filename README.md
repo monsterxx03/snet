@@ -61,7 +61,7 @@ Example config.json:
         "listen-host": "127.0.0.1",
         "listen-port": 1111,
         "proxy-type": "ss",
-        "proxy-timeout":  5,
+        "proxy-timeout":  30,
         # `bypassCN` or `global`, default to `bypassCN`
         "proxy-scope": "bypassCN",
 

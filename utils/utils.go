@@ -58,7 +58,9 @@ func Pipe(src, dst net.Conn) error {
 		defer wg.Done()
 		_, err := io.Copy(r, w)
 		if err != nil && !errors.Is(err, syscall.EPIPE) {
-			fmt.Println(err)
+			if err, ok := err.(net.Error); ok && !err.Timeout() {
+				fmt.Println(err)
+			}
 		}
 	}
 	wg.Add(2)

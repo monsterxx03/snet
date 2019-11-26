@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"snet/proxy"
 	"snet/redirector"
@@ -16,6 +17,7 @@ const (
 type Server struct {
 	listener *net.TCPListener
 	proxy    proxy.Proxy
+	timeout  time.Duration
 }
 
 func NewServer(c *Config) (*Server, error) {
@@ -39,6 +41,7 @@ func NewServer(c *Config) (*Server, error) {
 	return &Server{
 		listener: ln.(*net.TCPListener),
 		proxy:    p,
+		timeout:  time.Duration(c.ProxyTimeout) * time.Second,
 	}, nil
 }
 
@@ -68,6 +71,9 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	}
 	// if intercept is enabled, use i to replace conn
 	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
+	if err := remoteConn.SetDeadline(time.Now().Add(s.timeout)); err != nil {
+		return err
+	}
 	defer remoteConn.Close()
 	if err := utils.Pipe(conn, remoteConn); err != nil {
 		return err

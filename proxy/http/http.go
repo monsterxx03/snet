@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"time"
 
 	"snet/proxy"
 )
@@ -15,7 +14,6 @@ type Config struct {
 	Port         int
 	AuthUser     string
 	AuthPassword string
-	Timeout      time.Duration
 }
 
 type Server struct {
