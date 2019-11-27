@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"snet/dns"
 	"snet/logger"
@@ -170,7 +171,7 @@ func runTLSServer() {
 				return
 			}
 			defer dstConn.Close()
-			if err := utils.Pipe(conn, dstConn); err != nil {
+			if err := utils.Pipe(conn, dstConn, time.Duration(30)*time.Second); err != nil {
 				l.Error(err)
 			}
 		}(conn)
