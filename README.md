@@ -116,6 +116,15 @@ If proxy-scope is `global`, both should return ss server ip.
 
 If you use it on router, change `mode` to `router`, and listen-host should be your router's ip or `0.0.0.0`
 
+
+## For traffic from docker container
+
+Change `listen-host` to `0.0.0.0`, `mode` to `router`.
+
+Traffic from docker container's src ip is 172.17.0.1/16, it will go through `nat prerouting chain` -> `filter foward chain` -> `nat postrouting chain`, not `nat output chain`.
+
+The main reason I need a `client mode` and `router mode` is handling DNS redirct, don't know how to make it work for `PREROUTING chain` and `OUTPUT chain` at the same time.
+
 ## Notice
 
 If crash or force killed(kill -9), snet will have no chance to cleanup iptables/pf rules, it will make you have no internet access.
@@ -137,7 +146,6 @@ MacOS:
 If it's first nameserver, dns query will bypass `snet`(since I didn't handle ipv6), you need to disable ipv6 or put it on second line.
 - Chrome's cache for google.com is wired.If you can visit youtube.com or twitter.com, but can't open google.com, try to restart chrome to clean dns cache.
 - cn-dns should be different with the one in your /et/resolv.conf, otherwise dns lookup will by pass snet (iptable rules in SNET chain)
-- Traffic come from docker container will bypass snet.
 
 ## artilces:
 
