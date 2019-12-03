@@ -214,35 +214,42 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 			if len(body) == 0 {
 				continue
 			}
-			c1 := body[0]
-			c2 := body[1]
-			body = body[2:]
-			switch c1 & 0xC0 {
+			// check leading two bits, should be '00' or '11'
+			switch body[0] & 0xC0 {
 			case 0x0:
-				if c1 != 0 || c2 != 0 {
-					// Normal dns server's response NAME field always a pointer to existing data(NAME in QUESTION)
-					// if top 2 bytes not equal 0, it's an uncompressed msg.
-					return nil, errors.New("Maybe this dns server didn't compress response data? domain:" + queryDomain)
+				fmt.Println("Got uncompressed dns query:", queryDomain)
+				// skip uncompressed domain labels, useless in answer
+				for {
+					if body[0]&0xC0 == 0xC0 {
+						body = body[2:]
+						continue
+					}
+					if body[0] == 0x0 {
+						break
+					}
+					c1 := body[0]
+					body = body[int(c1)+1:]
 				}
 			case 0xC0:
-				atype := RType(binary.BigEndian.Uint16(body[:2]))
-				body = body[4:] // skip TYPE + CLASS
-				ttl := binary.BigEndian.Uint32(body[:4])
-				body = body[4:] // skip ttl
-				rdLen := binary.BigEndian.Uint16(body[:2])
-				body = body[2:] // skip rdLen
-				if atype.String() != "A" {
-					// only intereseted in A type, skip left rdata for other records
-					body = body[rdLen:]
-					continue
-				}
-				rdata := body[:rdLen]
-				arecords = append(arecords, NewARecord(rdata, ttl))
-				body = body[rdLen:] // skip rdata
+				body = body[2:] // leading '11' bits means it's a pointer to existing label
 			default:
 				// 0x80 and 0x40 are reversed bits, shouldn't appear here
 				return nil, errors.New("bad message")
 			}
+			atype := RType(binary.BigEndian.Uint16(body[:2]))
+			body = body[4:] // skip TYPE + CLASS
+			ttl := binary.BigEndian.Uint32(body[:4])
+			body = body[4:] // skip ttl
+			rdLen := binary.BigEndian.Uint16(body[:2])
+			body = body[2:] // skip rdLen
+			if atype.String() != "A" {
+				// only intereseted in A type, skip left rdata for other records
+				body = body[rdLen:]
+				continue
+			}
+			rdata := body[:rdLen]
+			arecords = append(arecords, NewARecord(rdata, ttl))
+			body = body[rdLen:] // skip rdata
 		}
 	}
 	qr := 0
