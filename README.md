@@ -64,6 +64,8 @@ Example config.json:
         "proxy-timeout":  30,
         # `bypassCN` or `global`, default to `bypassCN`
         "proxy-scope": "bypassCN",
+        # host list will bypass snet
+        "bypass-hosts": ["a.com"],
 
         # config used when proxy-type is "http"
         "http-proxy-host": "",

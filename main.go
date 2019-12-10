@@ -52,12 +52,23 @@ func runClient() {
 	exitOnError(err, nil)
 	dnsPort := config.LPort + 100
 
+	// bypass logic
 	var bypassCidrs []string
 	if config.ProxyScope == proxyScopeBypassCN {
 		bypassCidrs = Chnroutes
 	} else {
 		bypassCidrs = []string{}
 	}
+	for _, h := range config.BypassHosts {
+		ips, err := net.LookupIP(h)
+		if err != nil {
+			exitOnError(err, nil)
+		}
+		for _, ip := range ips {
+			bypassCidrs = append(bypassCidrs, ip.String())
+		}
+	}
+
 	redir, err := redirector.NewRedirector(bypassCidrs, l)
 	exitOnError(err, nil)
 

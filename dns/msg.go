@@ -217,7 +217,6 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 			// check leading two bits, should be '00' or '11'
 			switch body[0] & 0xC0 {
 			case 0x0:
-				fmt.Println("Got uncompressed dns query:", queryDomain)
 				// skip uncompressed domain labels, useless in answer
 				for {
 					if body[0]&0xC0 == 0xC0 {
