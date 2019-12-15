@@ -156,6 +156,10 @@ func (m *DNSMsg) Equal(t *DNSMsg) error {
 	return nil
 }
 
+func (m *DNSMsg) CacheKey() string {
+	return fmt.Sprintf("%s:%s", m.QDomain, m.QType)
+}
+
 func NewDNSMsg(data []byte) (*DNSMsg, error) {
 	if len(data) < 12 {
 		return nil, fmt.Errorf("invalid dns msg: %v", data)

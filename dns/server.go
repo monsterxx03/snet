@@ -268,22 +268,22 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		return err
 	}
 	if s.cache != nil && len(raw) > 0 {
-		var ttl uint32
-		if s.enforceTTL > 0 {
-			ttl = s.enforceTTL
-		} else {
-			// if enforceTTL not set, follow A record's TTL
-			if useMsg != nil && len(useMsg.ARecords) > 0 {
-				ttl = useMsg.ARecords[0].TTL
-			} else {
-				ttl = defaultTTL
-			}
-		}
+		ttl := s.getCacheTime(useMsg)
 		// add to dns cache
-		s.cache.Add(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType), raw, time.Now().Add(time.Second*time.Duration(ttl)))
+		s.cache.Add(dnsQuery.CacheKey(), raw, time.Now().Add(ttl))
 	}
 
 	return nil
+}
+
+func (s *DNS) getCacheTime(msg *DNSMsg) time.Duration {
+	if s.enforceTTL > 0 {
+		return time.Duration(s.enforceTTL) * time.Second
+	}
+	if msg != nil && len(msg.ARecords) > 0 {
+		return time.Duration(msg.ARecords[0].TTL) * time.Second
+	}
+	return defaultTTL * time.Second
 }
 
 func (s *DNS) parse(data []byte) (*DNSMsg, error) {
@@ -340,4 +340,27 @@ func (s *DNS) queryFQ(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+func (s *DNS) prefetch(data []byte, domain string, qtype string, delay time.Duration, fq bool) {
+	s.l.Debug("prefetching dns for ", domain)
+	time.Sleep(delay)
+	var respData []byte
+	var err error
+	if fq {
+		respData, err = s.queryFQ(data)
+	} else {
+		respData, err = s.queryCN(data)
+	}
+	if err != nil {
+		s.l.Error(err)
+		return
+	}
+	msg, err := s.parse(respData)
+	if err != nil {
+		s.l.Error(err)
+		return
+	}
+	ttl := s.getCacheTime(msg)
+	s.cache.Add(msg.CacheKey(), respData, time.Now().Add(ttl))
 }
