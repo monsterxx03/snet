@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,10 +40,16 @@ type DNS struct {
 	additionalBlockHosts []string
 	chnroutes            []*net.IPNet
 	cache                *cache.LRU
+	prefetchEnable       bool
+	prefetchCount        int
+	prefetchInterval     int
 	l                    *logger.Logger
 }
 
-func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string, ForceFq []string, HostMap map[string]string, BlockHostFile string, AdditionalBlockHosts, chnroutes []string, l *logger.Logger) (*DNS, error) {
+func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string,
+	ForceFq []string, HostMap map[string]string, BlockHostFile string, AdditionalBlockHosts []string,
+	prefetchEnable bool, prefetchCount int, prefetchInterval int,
+	chnroutes []string, l *logger.Logger) (*DNS, error) {
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -97,6 +104,9 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 		additionalBlockHosts: AdditionalBlockHosts,
 		chnroutes:            cnRoutes,
 		cache:                c,
+		prefetchEnable:       prefetchEnable,
+		prefetchCount:        prefetchCount,
+		prefetchInterval:     prefetchInterval,
 		l:                    l,
 	}, nil
 }
@@ -109,6 +119,10 @@ func (s *DNS) Run() error {
 	}
 	s.l.Info("DNS server listen on udp:", s.udpAddr)
 	defer s.udpListener.Close()
+	if s.cache != nil && s.prefetchEnable {
+		s.l.Info("Starting dns prefetch ticker")
+		go s.prefetchTicker()
+	}
 	for {
 		b := make([]byte, 1024)
 		n, uaddr, err := s.udpListener.ReadFromUDP(b)
@@ -166,9 +180,6 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		}
 	}()
 
-	var wg sync.WaitGroup
-	var cnData, fqData []byte
-	var cnMsg, fqMsg *DNSMsg
 	dnsQuery, err := s.parse(data)
 	if err != nil {
 		return err
@@ -200,7 +211,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		return nil
 	}
 	if s.cache != nil {
-		cachedData := s.cache.Get(fmt.Sprintf("%s:%s", dnsQuery.QDomain, dnsQuery.QType))
+		cachedData := s.cache.Get(dnsQuery.CacheKey())
 		if cachedData != nil {
 			s.l.Debug("dns cache hit:", dnsQuery.QDomain)
 			resp := cachedData.([]byte)
@@ -217,6 +228,45 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			}
 		}
 	}
+	raw, msg, err := s.doQuery(data, dnsQuery)
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.udpListener.WriteToUDP(raw, reqUaddr); err != nil {
+		return err
+	}
+	if s.cache != nil && len(raw) > 0 {
+		ttl := s.getCacheTime(msg)
+		// add to dns cache
+		s.cache.Add(dnsQuery.CacheKey(), raw, time.Now().Add(ttl))
+	}
+
+	return nil
+}
+
+func (s *DNS) getCacheTime(msg *DNSMsg) time.Duration {
+	if s.enforceTTL > 0 {
+		return time.Duration(s.enforceTTL) * time.Second
+	}
+	if msg != nil && len(msg.ARecords) > 0 {
+		return time.Duration(msg.ARecords[0].TTL) * time.Second
+	}
+	return defaultTTL * time.Second
+}
+
+func (s *DNS) parse(data []byte) (*DNSMsg, error) {
+	msg, err := NewDNSMsg(data)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func (s *DNS) doQuery(data []byte, dnsQuery *DNSMsg) (raw []byte, msg *DNSMsg, err error) {
+	var wg sync.WaitGroup
+	var cnData, fqData []byte
+	var cnMsg, fqMsg *DNSMsg
 	if !utils.DomainMatch(dnsQuery.QDomain, s.forceFQ) {
 		wg.Add(1)
 		go func(data []byte) {
@@ -245,53 +295,25 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if len(cnData) > 0 {
 		cnMsg, err = s.parse(cnData)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 	}
 	if len(fqData) > 0 {
 		fqMsg, err = s.parse(fqData)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 	}
-	var raw []byte
-	useMsg := cnMsg
+	msg = cnMsg
 	if cnMsg != nil && len(cnMsg.ARecords) >= 1 && s.isCNIP(cnMsg.ARecords[0].IP) {
 		// if cn dns have response and it's an cn ip, we think it's a site in China
 		raw = cnData
 	} else {
 		// use fq dns's response for all ip outside of China
 		raw = fqData
-		useMsg = fqMsg
+		msg = fqMsg
 	}
-	if _, err := s.udpListener.WriteToUDP(raw, reqUaddr); err != nil {
-		return err
-	}
-	if s.cache != nil && len(raw) > 0 {
-		ttl := s.getCacheTime(useMsg)
-		// add to dns cache
-		s.cache.Add(dnsQuery.CacheKey(), raw, time.Now().Add(ttl))
-	}
-
-	return nil
-}
-
-func (s *DNS) getCacheTime(msg *DNSMsg) time.Duration {
-	if s.enforceTTL > 0 {
-		return time.Duration(s.enforceTTL) * time.Second
-	}
-	if msg != nil && len(msg.ARecords) > 0 {
-		return time.Duration(msg.ARecords[0].TTL) * time.Second
-	}
-	return defaultTTL * time.Second
-}
-
-func (s *DNS) parse(data []byte) (*DNSMsg, error) {
-	msg, err := NewDNSMsg(data)
-	if err != nil {
-		return nil, err
-	}
-	return msg, nil
+	return
 }
 
 func (s *DNS) queryCN(data []byte) ([]byte, error) {
@@ -342,25 +364,36 @@ func (s *DNS) queryFQ(data []byte) ([]byte, error) {
 	return b, nil
 }
 
-func (s *DNS) prefetch(data []byte, domain string, qtype string, delay time.Duration, fq bool) {
-	s.l.Debug("prefetching dns for ", domain)
-	time.Sleep(delay)
-	var respData []byte
-	var err error
-	if fq {
-		respData, err = s.queryFQ(data)
-	} else {
-		respData, err = s.queryCN(data)
+func decodeCacheKey(key string) (qdomain string, qtype RType) {
+	r := strings.Split(key, ":")
+	qdomain = r[0]
+	_qtype, _ := strconv.Atoi(r[1])
+	qtype = RType(_qtype)
+	return
+}
+
+func (s *DNS) prefetchTicker() {
+	ticker := time.NewTicker(time.Duration(s.prefetchInterval) * time.Second)
+	defer ticker.Stop()
+	for ; true; <-ticker.C {
+		for _, item := range s.cache.PrefetchTopN(s.prefetchCount) {
+			s.l.Debug("prefetch for ", item.Key)
+			qdomain, qtype := decodeCacheKey(item.Key)
+			qdata := GetDNSQuery(qdomain, qtype)
+			qmsg, err := s.parse(qdata)
+			if err != nil {
+				s.l.Error(err)
+				continue
+			}
+			raw, msg, err := s.doQuery(qdata, qmsg)
+			if err != nil {
+				s.l.Error(err)
+				continue
+			}
+			if len(raw) > 0 {
+				ttl := s.getCacheTime(msg)
+				s.cache.Add(qmsg.CacheKey(), raw, time.Now().Add(ttl))
+			}
+		}
 	}
-	if err != nil {
-		s.l.Error(err)
-		return
-	}
-	msg, err := s.parse(respData)
-	if err != nil {
-		s.l.Error(err)
-		return
-	}
-	ttl := s.getCacheTime(msg)
-	s.cache.Add(msg.CacheKey(), respData, time.Now().Add(ttl))
 }

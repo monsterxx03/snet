@@ -10,7 +10,7 @@ import (
 
 const (
 	// only cache hit count large than this should do prefetch
-	prefetchMinHitCount = 10
+	prefetchMinHitCount = 5
 	// only cache will be expired in this time should do prefetch
 	prefetchLeftTTL = 10 * time.Second
 )
@@ -20,18 +20,18 @@ const (
 type entry struct {
 	key   interface{}
 	value interface{}
-	hit int
+	hit   int
 	ttl   time.Time
 }
 
 func (e *entry) toItem() Item {
-	return Item{key: e.key.(string), hit: e.hit, ttl: e.ttl}
+	return Item{Key: e.key.(string), Hit: e.hit, TTL: e.ttl}
 }
 
 type Item struct {
-	key string
-	hit int
-	ttl time.Time
+	Key string
+	Hit int
+	TTL time.Time
 }
 
 type LRU struct {
@@ -68,13 +68,12 @@ func (c *LRU) PrefetchTopN(n int) []Item {
 	return result
 }
 
-func  shouldPrefetch(e *entry, minHit int, leftTTL time.Duration) bool {
-	if e.hit >= minHit && time.Now().Sub(e.ttl) <= leftTTL {
+func shouldPrefetch(e *entry, minHit int, leftTTL time.Duration) bool {
+	if e.hit >= minHit && e.ttl.Sub(time.Now()) <= leftTTL {
 		return true
 	}
 	return false
 }
-
 
 func (c *LRU) Get(key interface{}) interface{} {
 	c.lock.Lock()

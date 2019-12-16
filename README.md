@@ -14,6 +14,8 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 - Handle DNS in the way like ChinaDNS, so website have CDN out of China won't be redirected to their overseas site
 - Local DNS cache based on TTL
 - block by domain name
+- hostname map
+- DNS prefetch
 
 ## Limation:
 
@@ -91,6 +93,11 @@ Example config.json:
         "enforce-ttl": 0,  # if > 0, will use this value otherthan A record's TTL
         "disable-qtypes": ["AAAA"], # return empty dns msg for those query types
         "force-fq": ["*.cloudfront.net"], # domain pattern matched will skip cn-dns query
+
+        "dns-prefetch-enable": true,
+        "dns-prefetch-count":  10,  # prefetch top 10 freq used domains in cache.
+        "dns-prefetch-interval": 10, 
+
         "host-map": {
             "google.com": "2.2.2.2"  # map host and ip
         },

@@ -70,26 +70,20 @@ func (m *DNSMsg) String() string {
 		t, m.ID, m.QDCount, m.ANCount, m.QDomain, m.QType, m.QClass, m.ARecords)
 }
 
-func GetEmptyDNSResp(queryData []byte) []byte {
-	resp := queryData
+func GetEmptyDNSResp(qdata []byte) []byte {
+	resp := qdata
 	// modify header to convert query to response
 	resp[2] = 0x81 // set QR bit to 1, means it's a response
 	resp[3] = 0x80
 	return resp
 }
 
-func GetDNSResp(queryData []byte, queryDomain string, ip string) []byte {
-	// TODO ugly, need to rewrite dns parser
-	labelLen := 0
-	for _, label := range strings.Split(queryDomain, ".") {
-		labelLen += 1 + len(label)
-	}
-	labelLen++ // domain endswith 0x00
-
+func GetDNSResp(qdata []byte, qdomain string, ip string) []byte {
+	labelLen := len(encodeDomain(qdomain))
 	answerOffset := 12 + labelLen + 4
 	// 16 is length of a single answer field: name pointer + type + class + ttl + len + ip
 	resp := make([]byte, answerOffset+16)
-	copy(resp, queryData[:answerOffset])
+	copy(resp, qdata[:answerOffset])
 	// modify header to convert query to response
 	resp[2] = 0x81 // set QR bit to 1, means it's a response
 	resp[3] = 0x80
@@ -112,6 +106,34 @@ func GetDNSResp(queryData []byte, queryDomain string, ip string) []byte {
 	// for ipv4, net.IP use bytes 12-15
 	copy(resp[answerOffset+12:], ipbytes[12:])
 	return resp
+}
+
+func encodeDomain(qdomain string) []byte {
+	data := make([]byte, 0, len(qdomain))
+	for _, label := range strings.Split(qdomain, ".") {
+		data = append(data, byte(len(label)))
+		data = append(data, []byte(label)...)
+	}
+	data = append(data, 0x00) // domain should endswith 0x00
+	return data
+}
+
+func GetDNSQuery(qdomain string, qtype RType) []byte {
+	d := encodeDomain(qdomain)
+	data := []byte{
+		0x25, 0x01, // id
+		0x01, 0x00, // flags, only set `do query recursively`
+		0x00, 0x01, // questions
+		0x00, 0x00, // answer rrs
+		0x00, 0x00, // authority rrs
+		0x00, 0x00, // additional rrs
+	}
+	data = append(data, d...)
+	record := make([]byte, 2)
+	binary.BigEndian.PutUint16(record, uint16(qtype))
+	data = append(data, record...)
+	data = append(data, []byte{0x00, 0x01}...) // class IN
+	return data
 }
 
 func (m *DNSMsg) IsQuery() bool {
@@ -157,7 +179,7 @@ func (m *DNSMsg) Equal(t *DNSMsg) error {
 }
 
 func (m *DNSMsg) CacheKey() string {
-	return fmt.Sprintf("%s:%s", m.QDomain, m.QType)
+	return fmt.Sprintf("%s:%d", m.QDomain, m.QType)
 }
 
 func NewDNSMsg(data []byte) (*DNSMsg, error) {

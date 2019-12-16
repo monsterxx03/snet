@@ -16,14 +16,16 @@ const (
 )
 
 const (
-	DefaultLHost        = "127.0.0.1"
-	DefaultLPort        = 1111
-	DefaultProxyTimeout = 30
-	DefaultProxyType    = "ss"
-	DefaultProxyScope   = proxyScopeBypassCN
-	DefaultCNDNS        = "223.6.6.6"
-	DefaultFQDNS        = "8.8.8.8"
-	DefaultMode         = "local"
+	DefaultLHost            = "127.0.0.1"
+	DefaultLPort            = 1111
+	DefaultProxyTimeout     = 30
+	DefaultProxyType        = "ss"
+	DefaultProxyScope       = proxyScopeBypassCN
+	DefaultCNDNS            = "223.6.6.6"
+	DefaultFQDNS            = "8.8.8.8"
+	DefaultMode             = "local"
+	DefaultPrefetchCount    = 10
+	DefaultPrefetchInterval = 10
 )
 
 type Config struct {
@@ -48,6 +50,9 @@ type Config struct {
 	FQDNS                 string            `json:"fq-dns"`
 	EnableDNSCache        bool              `json:"enable-dns-cache"`
 	EnforceTTL            uint32            `json:"enforce-ttl"`
+	DNSPrefetchEnable     bool              `json:"dns-prefetch-enable"`
+	DNSPrefetchCount      int               `json:"dns-prefetch-count"`
+	DNSPrefetchInterval   int               `json:"dns-prefetch-interval"`
 	DisableQTypes         []string          `json:"disable-qtypes"`
 	ForceFQ               []string          `json:"force-fq"`
 	HostMap               map[string]string `json:"host-map"`
@@ -95,6 +100,12 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 	if config.Mode == "" {
 		config.Mode = DefaultMode
+	}
+	if config.DNSPrefetchCount == 0 {
+		config.DNSPrefetchCount = DefaultPrefetchCount
+	}
+	if config.DNSPrefetchInterval == 0 {
+		config.DNSPrefetchInterval = DefaultPrefetchInterval
 	}
 	return &config, nil
 }
