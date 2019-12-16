@@ -8,12 +8,30 @@ import (
 	"time"
 )
 
+const (
+	// only cache hit count large than this should do prefetch
+	prefetchMinHitCount = 10
+	// only cache will be expired in this time should do prefetch
+	prefetchLeftTTL = 10 * time.Second
+)
+
 // entry represent an item in LRU.deque.
 // key is used when delete item from LRU.items
 type entry struct {
 	key   interface{}
 	value interface{}
+	hit int
 	ttl   time.Time
+}
+
+func (e *entry) toItem() Item {
+	return Item{key: e.key.(string), hit: e.hit, ttl: e.ttl}
+}
+
+type Item struct {
+	key string
+	hit int
+	ttl time.Time
 }
 
 type LRU struct {
@@ -35,18 +53,43 @@ func NewLRU(capacity int) (*LRU, error) {
 	}, nil
 }
 
+func (c *LRU) PrefetchTopN(n int) []Item {
+	item := c.deque.Front()
+	result := make([]Item, 0, n)
+	count := 0
+	for item != nil && count <= n {
+		v := item.Value.(*entry)
+		if shouldPrefetch(v, prefetchMinHitCount, prefetchLeftTTL) {
+			result = append(result, v.toItem())
+		}
+		item = item.Next()
+		count++
+	}
+	return result
+}
+
+func  shouldPrefetch(e *entry, minHit int, leftTTL time.Duration) bool {
+	if e.hit >= minHit && time.Now().Sub(e.ttl) <= leftTTL {
+		return true
+	}
+	return false
+}
+
+
 func (c *LRU) Get(key interface{}) interface{} {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	if v, ok := c.items[key]; ok {
-		if v.Value.(*entry).ttl.Before(time.Now()) {
+		_v := v.Value.(*entry)
+		if _v.ttl.Before(time.Now()) {
 			// expired
 			c.removeElement(v)
 			return nil
 		}
 		c.deque.MoveToFront(v)
-		return v.Value.(*entry).value
+		_v.hit++
+		return _v.value
 	}
 	return nil
 }
@@ -56,12 +99,14 @@ func (c *LRU) Add(key, value interface{}, ttl time.Time) bool {
 	defer c.lock.Unlock()
 
 	if v, ok := c.items[key]; ok {
-		v.Value.(*entry).value = value
-		v.Value.(*entry).ttl = ttl
+		_v := v.Value.(*entry)
+		_v.value = value
+		_v.ttl = ttl
+		_v.hit++
 		c.deque.MoveToFront(v)
 		return false
 	}
-	ent := &entry{key, value, ttl}
+	ent := &entry{key, value, 1, ttl}
 	ele := c.deque.PushFront(ent)
 	c.items[key] = ele
 	if c.Len() > c.capacity {
