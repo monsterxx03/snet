@@ -59,16 +59,18 @@ func runClient() {
 	} else {
 		bypassCidrs = []string{}
 	}
-	for _, h := range config.BypassHosts {
-		ips, err := net.LookupIP(h)
-		if err != nil {
-			exitOnError(err, nil)
+	if !*clean {
+		for _, h := range config.BypassHosts {
+			ips, err := net.LookupIP(h)
+			if err != nil {
+				exitOnError(err, nil)
+			}
+			for _, ip := range ips {
+				bypassCidrs = append(bypassCidrs, ip.String())
+			}
 		}
-		for _, ip := range ips {
-			bypassCidrs = append(bypassCidrs, ip.String())
-		}
-	}
 
+	}
 	redir, err := redirector.NewRedirector(bypassCidrs, l)
 	exitOnError(err, nil)
 
