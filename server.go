@@ -57,7 +57,7 @@ func (s *Server) Run() error {
 		}
 		go func(conn *net.TCPConn) {
 			if err := s.handle(conn); err != nil {
-				l.Warn(err)
+				l.Error(err)
 			}
 		}(conn)
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
@@ -75,6 +76,7 @@ func runClient() {
 	exitOnError(err, nil)
 
 	cleanupCallback := func() {
+		l.Info("cleanup redirector rules")
 		redir.CleanupRules(config.Mode, config.LHost, config.LPort, dnsPort)
 		redir.Destroy()
 	}
@@ -85,7 +87,6 @@ func runClient() {
 	}
 	s, err := NewServer(config)
 	exitOnError(err, nil)
-	errCh := make(chan error)
 	proxyIP := s.proxy.GetProxyIP()
 	exitOnError(err, nil)
 
@@ -99,32 +100,19 @@ func runClient() {
 		config.DNSPrefetchEnable, config.DNSPrefetchCount, config.DNSPrefetchInterval,
 		Chnroutes, l)
 	exitOnError(err, cleanupCallback)
-	go func() {
-		errCh <- dns.Run()
-	}()
-
-	go func() {
-		errCh <- s.Run()
-	}()
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP)
 		l.Info("Got signal:", <-c)
-		errCh <- nil
+		cancel()
 	}()
-
-	if err := <-errCh; err != nil {
-		l.Info(err)
-	}
-
+	go dns.Run()
+	go s.Run()
+	<-ctx.Done()
+	dns.Shutdown()
+	s.Shutdown()
 	cleanupCallback()
-
-	if err := dns.Shutdown(); err != nil {
-		l.Warn("Error during shutdown dns server", err)
-	}
-	if err := s.Shutdown(); err != nil {
-		l.Warn("Error during shutdown server", err)
-	}
 }
 
 func runTLSServer() {
