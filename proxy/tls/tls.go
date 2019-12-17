@@ -11,7 +11,7 @@ import (
 )
 
 type Config struct {
-	Host  string
+	Host  net.IP
 	Port  int
 	Token string
 }
@@ -24,11 +24,7 @@ type Server struct {
 
 func (s *Server) Init(c proxy.Config) error {
 	s.cfg = c.(*Config)
-	ips, err := net.LookupIP(s.cfg.Host)
-	if err != nil {
-		return err
-	}
-	s.Host = ips[0]
+	s.Host = s.cfg.Host
 	s.Port = s.cfg.Port
 	if s.cfg.Token == "" {
 		return errors.New("missing tls token")

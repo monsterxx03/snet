@@ -377,7 +377,7 @@ func (s *DNS) prefetchTicker() {
 	defer ticker.Stop()
 	for ; true; <-ticker.C {
 		for _, item := range s.cache.PrefetchTopN(s.prefetchCount) {
-			s.l.Debug("prefetch for ", item.Key)
+			s.l.Info("prefetch for ", item.Key)
 			qdomain, qtype := decodeCacheKey(item.Key)
 			qdata := GetDNSQuery(qdomain, qtype)
 			qmsg, err := s.parse(qdata)

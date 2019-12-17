@@ -35,7 +35,11 @@ func NewServer(c *Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := p.Init(genConfigByType(c, c.ProxyType)); err != nil {
+	cfg, err := genConfigByType(c, c.ProxyType)
+	if err != nil {
+		return nil, err
+	}
+	if err := p.Init(cfg); err != nil {
 		return nil, err
 	}
 	return &Server{

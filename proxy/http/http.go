@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	Host         string
+	Host         net.IP
 	Port         int
 	AuthUser     string
 	AuthPassword string
@@ -27,11 +27,7 @@ var OK_MSG = "HTTP/1.1 200"
 
 func (s *Server) Init(c proxy.Config) error {
 	s.cfg = c.(*Config)
-	ips, err := net.LookupIP(s.cfg.Host)
-	if err != nil {
-		return err
-	}
-	s.Host = ips[0]
+	s.Host = s.cfg.Host
 	s.Port = s.cfg.Port
 	s.auth = base64.StdEncoding.EncodeToString([]byte(s.cfg.AuthUser + ":" + s.cfg.AuthPassword))
 	return nil

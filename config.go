@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"net"
+
 	"snet/proxy"
 	"snet/proxy/http"
 	"snet/proxy/ss"
@@ -110,14 +112,37 @@ func LoadConfig(configPath string) (*Config, error) {
 	return &config, nil
 }
 
-func genConfigByType(c *Config, proxyType string) proxy.Config {
+func genConfigByType(c *Config, proxyType string) (proxy.Config, error) {
 	switch proxyType {
 	case "ss":
-		return &ss.Config{Host: c.SSHost, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd}
+		ip, err := resolvHostIP(c.SSHost)
+		if err != nil {
+			return nil, err
+		}
+		return &ss.Config{Host: ip, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd}, nil
 	case "http":
-		return &http.Config{Host: c.HTTPProxyHost, Port: c.HTTPProxyPort, AuthUser: c.HTTPProxyAuthUser, AuthPassword: c.HTTPProxyAuthPassword}
+		ip, err := resolvHostIP(c.HTTPProxyHost)
+		if err != nil {
+			return nil, err
+		}
+		return &http.Config{Host: ip, Port: c.HTTPProxyPort, AuthUser: c.HTTPProxyAuthUser, AuthPassword: c.HTTPProxyAuthPassword}, nil
 	case "tls":
-		return &tls.Config{Host: c.TLSHost, Port: c.TLSPort, Token: c.TLSToken}
+		ip, err := resolvHostIP(c.TLSHost)
+		if err != nil {
+			return nil, err
+		}
+		return &tls.Config{Host: ip, Port: c.TLSPort, Token: c.TLSToken}, nil
 	}
-	return nil
+	return nil, nil
+}
+
+func resolvHostIP(host string) (net.IP, error) {
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return nil, err
+	}
+	if len(ips) == 0 {
+		return nil, errors.New("No ip found for " + host)
+	}
+	return ips[0], nil
 }

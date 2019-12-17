@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	Host         string
+	Host         net.IP
 	Port         int
 	CipherMethod string
 	Password     string
@@ -24,12 +24,9 @@ type Server struct {
 }
 
 func (s *Server) Init(c proxy.Config) error {
+	var err error
 	s.cfg = c.(*Config)
-	ips, err := net.LookupIP(s.cfg.Host)
-	if err != nil {
-		return err
-	}
-	s.Host = ips[0]
+	s.Host = s.cfg.Host
 	s.Port = s.cfg.Port
 	s.cipher, err = ss.NewCipher(s.cfg.CipherMethod, s.cfg.Password)
 	if err != nil {
