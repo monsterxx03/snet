@@ -6,7 +6,7 @@ import (
 )
 
 func TestLRU(t *testing.T) {
-	fakeTTL := time.Now().Add(time.Hour * 10000) // skip ttl check
+	fakeTTL := time.Hour * 10000 // skip ttl check
 	_, err := NewLRU(-1)
 	if err == nil {
 		t.Fatalf("negative capacity should not be allowed")
@@ -42,7 +42,7 @@ func TestLRU(t *testing.T) {
 
 func TestLRUWithTTL(t *testing.T) {
 	cache, _ := NewLRU(3)
-	ttl := time.Now().Add(time.Second * 1)
+	ttl := time.Second * 1
 	cache.Add("k1", "v1", ttl)
 	if cache.Get("k1") != "v1" {
 		t.Error("cache inconsistent")

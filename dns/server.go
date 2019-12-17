@@ -239,7 +239,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if s.cache != nil && len(raw) > 0 {
 		ttl := s.getCacheTime(msg)
 		// add to dns cache
-		s.cache.Add(dnsQuery.CacheKey(), raw, time.Now().Add(ttl))
+		s.cache.Add(dnsQuery.CacheKey(), raw, ttl)
 	}
 
 	return nil
@@ -392,7 +392,7 @@ func (s *DNS) prefetchTicker() {
 			}
 			if len(raw) > 0 {
 				ttl := s.getCacheTime(msg)
-				s.cache.Add(qmsg.CacheKey(), raw, time.Now().Add(ttl))
+				s.cache.Add(qmsg.CacheKey(), raw, ttl)
 			}
 		}
 	}

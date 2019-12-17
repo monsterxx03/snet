@@ -10,9 +10,9 @@ import (
 
 const (
 	// only cache hit count large than this should do prefetch
-	prefetchMinHitCount = 5
+	prefetchMinHitCount = 10
 	// only cache will be expired in this time should do prefetch
-	prefetchLeftTTL = 10 * time.Second
+	prefetchLeftTTLPercentage = 0.1
 )
 
 // entry represent an item in LRU.deque.
@@ -21,7 +21,12 @@ type entry struct {
 	key   interface{}
 	value interface{}
 	hit   int
-	ttl   time.Time
+	createdAt time.Time
+	ttl   time.Duration
+}
+
+func (e *entry) expiredAt() time.Time {
+	return e.createdAt.Add(e.ttl)
 }
 
 func (e *entry) toItem() Item {
@@ -31,7 +36,7 @@ func (e *entry) toItem() Item {
 type Item struct {
 	Key string
 	Hit int
-	TTL time.Time
+	TTL time.Duration
 }
 
 type LRU struct {
@@ -59,7 +64,7 @@ func (c *LRU) PrefetchTopN(n int) []Item {
 	count := 0
 	for item != nil && count <= n {
 		v := item.Value.(*entry)
-		if shouldPrefetch(v, prefetchMinHitCount, prefetchLeftTTL) {
+		if shouldPrefetch(v, prefetchMinHitCount) {
 			result = append(result, v.toItem())
 		}
 		item = item.Next()
@@ -68,8 +73,11 @@ func (c *LRU) PrefetchTopN(n int) []Item {
 	return result
 }
 
-func shouldPrefetch(e *entry, minHit int, leftTTL time.Duration) bool {
-	if e.hit >= minHit && e.ttl.Sub(time.Now()) <= leftTTL {
+func shouldPrefetch(e *entry, minHit int) bool {
+	if e.hit < minHit {
+		return false
+	}
+	if float64(e.expiredAt().Sub(time.Now())) / float64(e.ttl) <= prefetchLeftTTLPercentage {
 		return true
 	}
 	return false
@@ -81,7 +89,7 @@ func (c *LRU) Get(key interface{}) interface{} {
 
 	if v, ok := c.items[key]; ok {
 		_v := v.Value.(*entry)
-		if _v.ttl.Before(time.Now()) {
+		if _v.expiredAt().Before(time.Now()) {
 			// expired
 			c.removeElement(v)
 			return nil
@@ -93,7 +101,7 @@ func (c *LRU) Get(key interface{}) interface{} {
 	return nil
 }
 
-func (c *LRU) Add(key, value interface{}, ttl time.Time) bool {
+func (c *LRU) Add(key, value interface{}, ttl time.Duration) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -105,7 +113,7 @@ func (c *LRU) Add(key, value interface{}, ttl time.Time) bool {
 		c.deque.MoveToFront(v)
 		return false
 	}
-	ent := &entry{key, value, 1, ttl}
+	ent := &entry{key, value, 1, time.Now(), ttl}
 	ele := c.deque.PushFront(ent)
 	c.items[key] = ele
 	if c.Len() > c.capacity {
