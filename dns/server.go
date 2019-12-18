@@ -376,6 +376,7 @@ func (s *DNS) prefetchTicker() {
 	ticker := time.NewTicker(time.Duration(s.prefetchInterval) * time.Second)
 	defer ticker.Stop()
 	for ; true; <-ticker.C {
+		s.l.Info("starting dns prefetch for top", s.prefetchCount)
 		for _, item := range s.cache.PrefetchTopN(s.prefetchCount) {
 			s.l.Info("prefetch for ", item.Key)
 			qdomain, qtype := decodeCacheKey(item.Key)
@@ -392,6 +393,7 @@ func (s *DNS) prefetchTicker() {
 			}
 			if len(raw) > 0 {
 				ttl := s.getCacheTime(msg)
+				s.cache.Evict(qmsg.CacheKey())
 				s.cache.Add(qmsg.CacheKey(), raw, ttl)
 			}
 		}

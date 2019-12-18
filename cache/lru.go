@@ -18,11 +18,11 @@ const (
 // entry represent an item in LRU.deque.
 // key is used when delete item from LRU.items
 type entry struct {
-	key   interface{}
-	value interface{}
-	hit   int
+	key       interface{}
+	value     interface{}
+	hit       int
 	createdAt time.Time
-	ttl   time.Duration
+	ttl       time.Duration
 }
 
 func (e *entry) expiredAt() time.Time {
@@ -77,7 +77,7 @@ func shouldPrefetch(e *entry, minHit int) bool {
 	if e.hit < minHit {
 		return false
 	}
-	if float64(e.expiredAt().Sub(time.Now())) / float64(e.ttl) <= prefetchLeftTTLPercentage {
+	if float64(e.expiredAt().Sub(time.Now()))/float64(e.ttl) <= prefetchLeftTTLPercentage {
 		return true
 	}
 	return false
@@ -94,8 +94,8 @@ func (c *LRU) Get(key interface{}) interface{} {
 			c.removeElement(v)
 			return nil
 		}
-		c.deque.MoveToFront(v)
 		_v.hit++
+		c.deque.MoveToFront(v)
 		return _v.value
 	}
 	return nil
@@ -121,6 +121,16 @@ func (c *LRU) Add(key, value interface{}, ttl time.Duration) bool {
 		c.removeElement(ele)
 	}
 	return true
+}
+
+func (c *LRU) Evict(key interface{}) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if v, ok := c.items[key]; ok {
+		c.removeElement(v)
+		return true
+	}
+	return false
 }
 
 func (c *LRU) removeElement(item *list.Element) {
