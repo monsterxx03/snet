@@ -90,13 +90,13 @@ Example config.json:
         "cn-dns": "114.114.114.114",  # dns in China
         "fq-dns": "8.8.8.8",  # clean dns out of China
         "enable-dns-cache": true,
-        "enforce-ttl": 0,  # if > 0, will use this value otherthan A record's TTL
+        "enforce-ttl": 3600,  # if > 0, will use this value otherthan A record's TTL
         "disable-qtypes": ["AAAA"], # return empty dns msg for those query types
         "force-fq": ["*.cloudfront.net"], # domain pattern matched will skip cn-dns query
 
         "dns-prefetch-enable": true,
-        "dns-prefetch-count":  10,  # prefetch top 10 freq used domains in cache.
-        "dns-prefetch-interval": 10, 
+        "dns-prefetch-count":  100,  # prefetch top 10 freq used domains in cache.
+        "dns-prefetch-interval": 60, 
 
         "host-map": {
             "google.com": "2.2.2.2"  # map host and ip
