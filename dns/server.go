@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"snet/bloomfilter"
+	"snet/cidradix"
 	"snet/cache"
 	"snet/logger"
 	"snet/utils"
@@ -38,7 +39,7 @@ type DNS struct {
 	blockHostsBF         *bloomfilter.Bloomfilter
 	blockHosts           []string
 	additionalBlockHosts []string
-	chnroutes            []*net.IPNet
+	chnroutesTree        *cidradix.Tree
 	cache                *cache.LRU
 	prefetchEnable       bool
 	prefetchCount        int
@@ -83,13 +84,14 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 		}
 	}
 
-	cnRoutes := make([]*net.IPNet, 0, len(chnroutes))
+	// build radix tree for cidr
+	tree := cidradix.NewTree()
 	for _, route := range chnroutes {
 		_, ipnet, err := net.ParseCIDR(route)
 		if err != nil {
 			return nil, err
 		}
-		cnRoutes = append(cnRoutes, ipnet)
+		tree.AddCIDR(ipnet)
 	}
 	return &DNS{
 		udpAddr:              uaddr,
@@ -102,7 +104,7 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 		blockHostsBF:         bf,
 		blockHosts:           lines,
 		additionalBlockHosts: AdditionalBlockHosts,
-		chnroutes:            cnRoutes,
+		chnroutesTree:        tree,
 		cache:                c,
 		prefetchEnable:       prefetchEnable,
 		prefetchCount:        prefetchCount,
@@ -164,10 +166,11 @@ func (s *DNS) badDomain(domain string) bool {
 }
 
 func (s *DNS) isCNIP(ip net.IP) bool {
-	for _, ipnet := range s.chnroutes {
-		if ipnet.Contains(ip) {
-			return true
-		}
+	// radix tree cost ~20us to check ip in cidr.
+	// loop over whole cidr check cost 130us+,
+	// worth the effort.
+	if s.chnroutesTree.Contains(ip) {
+		return true
 	}
 	return false
 }
