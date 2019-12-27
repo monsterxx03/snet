@@ -72,7 +72,7 @@ func runClient() {
 		}
 
 	}
-	redir, err := redirector.NewRedirector(bypassCidrs, l)
+	redir, err := redirector.NewRedirector(bypassCidrs, config.BypassSrcIPs, l)
 	exitOnError(err, nil)
 
 	cleanupCallback := func() {

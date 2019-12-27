@@ -5,6 +5,7 @@
     "proxy-timeout": 30,
     "proxy-scope": "bypassCN",
     "bypass-hosts": [],
+    "bypass-src-ips": [],
     "http-proxy-host": "",
     "http-proxy-port": 8080,
     "http-proxy-auth-user": "",

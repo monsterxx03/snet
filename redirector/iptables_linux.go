@@ -65,8 +65,9 @@ func (s *IPSet) Destroy() {
 }
 
 type IPTables struct {
-	ipset *IPSet
-	l     *logger.Logger
+	ipset        *IPSet
+	byPassSrcIPs []string
+	l            *logger.Logger
 }
 
 func (r *IPTables) Init() error {
@@ -118,6 +119,12 @@ func (r *IPTables) SetupRules(mode string, snetHost string, snetPort int, dnsPor
 		if out, err := utils.Sh("iptables -t nat -I PREROUTING -p tcp -j", chainName); err != nil {
 			r.l.Error(out)
 			return err
+		}
+		for _, src := range r.byPassSrcIPs {
+			if out, err := utils.Sh("iptables -t nat -I PREROUTING -p tcp ", "-s ", src, "-j RETURN"); err != nil {
+				r.l.Error(out)
+				return err
+			}
 		}
 		if out, err := utils.Sh("iptables -t nat -I PREROUTING -p udp --dport 53 -j REDIRECT --to-port", dport); err != nil {
 			r.l.Error(out)
@@ -177,12 +184,12 @@ func GetDstAddr(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
 	return host, int(addr.Multiaddr[2])<<8 + int(addr.Multiaddr[3]), err
 }
 
-func NewRedirector(byPassRoutes []string, l *logger.Logger) (Redirector, error) {
+func NewRedirector(byPassRoutes []string, byPassSrcIPs []string, l *logger.Logger) (Redirector, error) {
 
 	if _, err := utils.Sh("which ipset"); err != nil {
 		return nil, errors.New("ipset not found")
 	}
 	bypass := append(byPassRoutes, whitelistCIDR...)
 	ipset := &IPSet{Name: setName, bypassCidrs: bypass}
-	return &IPTables{ipset, l}, nil
+	return &IPTables{ipset, byPassSrcIPs, l}, nil
 }

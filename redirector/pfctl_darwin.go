@@ -97,7 +97,8 @@ func (pf *PacketFilter) ByPass(ip string) error {
 	return nil
 }
 
-func NewRedirector(byPassRoutes []string, l *logger.Logger) (Redirector, error) {
+func NewRedirector(byPassRoutes []string, byPassSrcIPs []string, l *logger.Logger) (Redirector, error) {
+	// byPassSrcIPs is useless on mac, since it only works on router mode
 	if _, err := utils.Sh("which pfctl"); err != nil {
 		return nil, err
 	}

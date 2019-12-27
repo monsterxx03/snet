@@ -66,8 +66,10 @@ Example config.json:
         "proxy-timeout":  30,
         # `bypassCN` or `global`, default to `bypassCN`
         "proxy-scope": "bypassCN",
-        # host list will bypass snet
+        # target host list will bypass snet
         "bypass-hosts": ["a.com"],
+        # only work on "mode": "router", traffic from those ips will bypass snet, use case: home NAS
+        "bypass-src-ips": ["192.168.1.100"],
 
         # config used when proxy-type is "http"
         "http-proxy-host": "",

@@ -37,6 +37,7 @@ type Config struct {
 	ProxyTimeout          int               `json:"proxy-timeout"`
 	ProxyScope            string            `json:"proxy-scope"`
 	BypassHosts           []string          `json:"bypass-hosts"`
+	BypassSrcIPs          []string          `json:"bypass-src-ips"`
 	HTTPProxyHost         string            `json:"http-proxy-host"`
 	HTTPProxyPort         int               `json:"http-proxy-port"`
 	HTTPProxyAuthUser     string            `json:"http-proxy-auth-user"`
