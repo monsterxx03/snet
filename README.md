@@ -7,7 +7,7 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 
 ## Features
 
-- SS/http-tunnel/tls-tunnel as upstream server
+- ss/http-tunnel/tls-tunnel/socks5 as upstream server
 - Sytemwide tcp proxy on linux desktop/server(iptables), MacOS desktop (pfctl)
 - Works on openwrt router
 - Bypass traffic in China
@@ -89,6 +89,12 @@ Example config.json:
         "tls-port": 443,
         "tls-token": "tlstoken",
 
+        # config used when proxy-type is "socks5"
+        "socks5-host": "",
+        "socks5-port": 1080,
+        "socks5-auth-user": "",
+        "socks5-auth-password": "",
+
         "cn-dns": "114.114.114.114",  # dns in China
         "fq-dns": "8.8.8.8",  # clean dns out of China
         "enable-dns-cache": true,
@@ -113,6 +119,7 @@ supported proxy-type:
 - ss: use ss as upstream server
 - http: use http proxy server as upstream server(should support `CONNECT` method, eg: squid)
 - tls: use snet tls tunnel as upstream server
+- socks5: use socks5 as upstream server. Note: if your socks5 proxy server is running on same host with snet, ensure to add socks5's upstream server address to snet's `bypass-hosts` list, or socks5's traffic to upstream server will be hijacked by snet, being a loop.
 
 Since `snet` will modify iptables/pf, root privilege is required. 
 

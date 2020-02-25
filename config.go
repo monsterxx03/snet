@@ -8,6 +8,7 @@ import (
 
 	"snet/proxy"
 	"snet/proxy/http"
+	"snet/proxy/socks5"
 	"snet/proxy/ss"
 	"snet/proxy/tls"
 )
@@ -49,6 +50,10 @@ type Config struct {
 	TLSHost               string            `json:"tls-host"`
 	TLSPort               int               `json:"tls-port"`
 	TLSToken              string            `json:"tls-token"`
+	SOCKS5Host            string            `json:"socks5-host"`
+	SOCKS5Port            int               `json:"socks5-port"`
+	SOCKS5AuthUser        string            `json:"socks5-auth-user"`
+	SOCKS5AuthPassword    string            `json:"socks5-auth-password"`
 	CNDNS                 string            `json:"cn-dns"`
 	FQDNS                 string            `json:"fq-dns"`
 	EnableDNSCache        bool              `json:"enable-dns-cache"`
@@ -133,6 +138,12 @@ func genConfigByType(c *Config, proxyType string) (proxy.Config, error) {
 			return nil, err
 		}
 		return &tls.Config{Host: ip, Port: c.TLSPort, Token: c.TLSToken}, nil
+	case "socks5":
+		ip, err := resolvHostIP(c.SOCKS5Host)
+		if err != nil {
+			return nil, err
+		}
+		return &socks5.Config{Host: ip, Port: c.SOCKS5Port, AuthUser: c.SOCKS5AuthUser, AuthPassword: c.SOCKS5AuthPassword}, nil
 	}
 	return nil, nil
 }
