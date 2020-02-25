@@ -268,6 +268,10 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 			rdLen := binary.BigEndian.Uint16(body[:2])
 			body = body[2:] // skip rdLen
 			if atype.String() != "A" {
+				// skip bad msg
+				if int(rdLen) >= len(body) {
+					continue
+				}
 				// only intereseted in A type, skip left rdata for other records
 				body = body[rdLen:]
 				continue
