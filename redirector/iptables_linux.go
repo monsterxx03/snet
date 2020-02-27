@@ -29,7 +29,10 @@ type IPSet struct {
 
 func (s *IPSet) Add(ip string) error {
 	s.bypassCidrs = append(s.bypassCidrs, ip)
-	if _, err := utils.Sh("ipset add", s.Name, ip); err != nil {
+	if out, err := utils.Sh("ipset add", s.Name, ip); err != nil {
+		if out != "" {
+			return errors.New(out + ":" + ip)
+		}
 		return err
 	}
 	return nil
