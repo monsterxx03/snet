@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"snet/bloomfilter"
-	"snet/cidradix"
 	"snet/cache"
+	"snet/cidradix"
 	"snet/logger"
 	"snet/utils"
 )
@@ -270,19 +270,6 @@ func (s *DNS) doQuery(data []byte, dnsQuery *DNSMsg) (raw []byte, msg *DNSMsg, e
 	var wg sync.WaitGroup
 	var cnData, fqData []byte
 	var cnMsg, fqMsg *DNSMsg
-	if !utils.DomainMatch(dnsQuery.QDomain, s.forceFQ) {
-		wg.Add(1)
-		go func(data []byte) {
-			defer wg.Done()
-			var err error
-			cnData, err = s.queryCN(data)
-			if err != nil {
-				s.l.Error("failed to query CN dns:", dnsQuery, err)
-			}
-		}(data)
-	} else {
-		s.l.Debug("skip cn-dns for", dnsQuery.QDomain)
-	}
 	wg.Add(1)
 	go func(data []byte) {
 		defer wg.Done()
@@ -290,29 +277,38 @@ func (s *DNS) doQuery(data []byte, dnsQuery *DNSMsg) (raw []byte, msg *DNSMsg, e
 		fqData, err = s.queryFQ(data)
 		if err != nil {
 			s.l.Error("failed to query fq dns:", dnsQuery, err)
+			return
 		}
-	}(data)
-
-	wg.Wait()
-
-	if len(cnData) > 0 {
-		cnMsg, err = s.parse(cnData)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-	if len(fqData) > 0 {
 		fqMsg, err = s.parse(fqData)
 		if err != nil {
+			s.l.Error("failed to parse resp from fq dns:", err)
+		}
+	}(data)
+	if !utils.DomainMatch(dnsQuery.QDomain, s.forceFQ) {
+		var err error
+		cnData, err = s.queryCN(data)
+		if err != nil {
+			s.l.Error("failed to query CN dns:", dnsQuery, err)
 			return nil, nil, err
 		}
-	}
-	msg = cnMsg
-	if cnMsg != nil && len(cnMsg.ARecords) >= 1 && s.isCNIP(cnMsg.ARecords[0].IP) {
-		// if cn dns have response and it's an cn ip, we think it's a site in China
-		raw = cnData
+		cnMsg, err = s.parse(cnData)
+		if err != nil {
+			s.l.Error("failed to parse resp from cn dns:", err)
+			return nil, nil, err
+		}
+		if len(cnMsg.ARecords) >= 1 && s.isCNIP(cnMsg.ARecords[0].IP) {
+			// if cn dns have response and it's an cn ip, we think it's a site in China
+			raw = cnData
+			msg = cnMsg
+		} else {
+			wg.Wait()
+			// use fq dns's response for all ip outside of China
+			raw = fqData
+			msg = fqMsg
+		}
 	} else {
-		// use fq dns's response for all ip outside of China
+		s.l.Debug("skip cn-dns for", dnsQuery.QDomain)
+		wg.Wait()
 		raw = fqData
 		msg = fqMsg
 	}
