@@ -15,7 +15,7 @@ build_darwin_amd64:
 update:
 	curl http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest -o apnic.txt
 	curl https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o ad_hosts.txt
-	go generate
+	go generate && curl https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt >> ad_hosts 
 	go fmt
 
 test:

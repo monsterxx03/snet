@@ -48,5 +48,5 @@ func main() {
 		panic(err)
 	}
 	defer f.Close()
-	f.WriteString(strings.Join(result, "\n"))
+	f.WriteString(strings.Join(result, "\n") + "\n")
 }

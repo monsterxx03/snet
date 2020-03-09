@@ -71,8 +71,13 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 		}
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
+		now := time.Now()
 		for scanner.Scan() {
-			lines = append(lines, strings.TrimSpace(scanner.Text()))
+			l := strings.TrimSpace(scanner.Text())
+			if strings.HasPrefix(l, "#") {
+				continue
+			}
+			lines = append(lines, l)
 		}
 		bf, err = bloomfilter.NewBloomfilter(len(lines), bloomfilterErrorRate)
 		if err != nil {
@@ -82,6 +87,7 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 		for _, line := range lines {
 			bf.Add([]byte(line))
 		}
+		l.Info("Load ad hosts file, cost:", time.Now().Sub(now))
 	}
 
 	// build radix tree for cidr
