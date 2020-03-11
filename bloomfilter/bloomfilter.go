@@ -43,6 +43,10 @@ func (b *Bloomfilter) Add(item []byte) error {
 	return nil
 }
 
+func (b *Bloomfilter) Size() uint32 {
+	return b.size / 8
+}
+
 func (b *Bloomfilter) Has(item []byte) bool {
 	for i := uint8(0); i < b.hashN; i++ {
 		loc := hash(item, i) % b.size

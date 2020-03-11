@@ -83,11 +83,14 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 		if err != nil {
 			return nil, err
 		}
+		l.Debugf("bloomfilter array size %dKB", bf.Size()/1024)
 		// init bf
+		count := 0
 		for _, line := range lines {
 			bf.Add([]byte(line))
+			count++
 		}
-		l.Info("Load ad hosts file, cost:", time.Now().Sub(now))
+		l.Debugf("load ad hosts %d lines, cost: %v", count, time.Now().Sub(now))
 	}
 
 	// build radix tree for cidr
