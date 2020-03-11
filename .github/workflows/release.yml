@@ -30,7 +30,7 @@ jobs:
         go-version: "1.13"
 
     - name: Build
-      run: make build_linux_amd64 && make build_darwin_amd64
+      run: make build_all
 
     - name: Upload Linux Release Asset
       uses: actions/upload-release-asset@v1.0.1
@@ -50,4 +50,23 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./bin/snet_darwin_amd64
         asset_name: snet_darwin_amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload mipsle Release Asset
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/snet_mipsle
+        asset_name: snet_mipsle
+        asset_content_type: application/octet-stream
+    - name: Upload mipsle softfloat Release Asset
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/snet_mipsle_softfloat
+        asset_name: snet_mipsle_softfloat
         asset_content_type: application/octet-stream

@@ -5,6 +5,8 @@ LDFLAGS="-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%
 build:
 	go build -ldflags $(LDFLAGS) -o bin/snet
 
+build_all: build_linux_amd64 build_darwin_amd64 build_mipsle_softfloat build_mipsle
+
 build_linux_amd64:
 	GOOS=linux GOARCH=amd64  go build -ldflags $(LDFLAGS) -o bin/snet_linux_amd64
 
@@ -21,10 +23,10 @@ update:
 test:
 	go test --race -v $$(go list ./...| grep -v -e /vendor/)
 
-build_hiwifi:
+build_mipsle_softfloat:
 	GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build -ldflags $(LDFLAGS) -o bin/snet_mipsle_softfloat
 
-build_erx:
+build_mipsle:
 	GOOS=linux GOARCH=mipsle go build -ldflags $(LDFLAGS) -o bin/snet_mipsle
 
 deb:
