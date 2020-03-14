@@ -39,16 +39,26 @@ Router:
 
 ### As upstream server
 
+example config.json:
+
+    {
+        "as-upstream": true,
+        "upstream-type": "tls",
+        "upstream-tls-server-listen": "0.0.0.0:9999",
+        "upstream-tls-key": "server.key", # created by: openssl genrsa -out server.key 2048
+        "upstream-tls-crt": "server.pem", # created by: openssl req -new -x509 -key server.key -out server.pem -days 3650
+        "upstream-tls-token": "xxxx"  # random string
+    }
+
 Only support tls tunnel when run as upstream server
 
-Generate tls key pair:
+upstream-type:
 
-- openssl genrsa -out server.key 2048
-- openssl req -new -x509 -key server.key -out server.pem -days 3650
+- tls: run as tls tunnel server
 
 Run:
 
-    ./snet -tlsserver 0.0.0.0:9999 -tlstoken randomstringxxx  -tlskey server.key -tlscrt server.pem
+    ./snet -config config.json
 
 
 ### As client
@@ -60,6 +70,7 @@ For macos: pfctl is included by default, no extra dependences.
 Example config.json:
 
     {
+        "as-upstream": false,
         "listen-host": "127.0.0.1",
         "listen-port": 1111,
         "proxy-type": "ss",

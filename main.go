@@ -31,27 +31,51 @@ var (
 	buildAt string
 )
 
-var tlsserver = flag.String("tlsserver", "", "run as tls server, eg: 0.0.0.0:9999")
-var tlskey = flag.String("tlskey", "server.key", "private key used in tls")
-var tlscrt = flag.String("tlscrt", "server.pem", "cert used in tls")
-var tlstoken = flag.String("tlstoken", "", "used in tlsserver mode")
-
 var configFile = flag.String("config", "", "json config file path, only used when working as client")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 var version = flag.Bool("version", false, "print version only")
 var verbose = flag.Bool("v", false, "verbose output")
 var l *logger.Logger
 
-func runClient() {
-	var err error
-
-	if *configFile == "" {
-		fmt.Println("-config is required")
-		os.Exit(1)
-	}
-	config, err := LoadConfig(*configFile)
-	exitOnError(err, nil)
+func runClient(config *Config) {
 	dnsPort := config.LPort + 100
+	if config.ProxyType == "" {
+		panic("missing proxy-type")
+	}
+	switch config.ProxyScope {
+	case "":
+		config.ProxyScope = proxyScopeBypassCN
+	case proxyScopeGlobal, proxyScopeBypassCN:
+	default:
+		panic("invalid proxy-scope " + config.ProxyScope)
+	}
+	if config.ProxyScope == "" {
+		config.ProxyScope = DefaultProxyScope
+	}
+	if config.LHost == "" {
+		config.LHost = DefaultLHost
+	}
+	if config.LPort == 0 {
+		config.LPort = DefaultLPort
+	}
+	if config.ProxyTimeout == 0 {
+		config.ProxyTimeout = DefaultProxyTimeout
+	}
+	if config.CNDNS == "" {
+		config.CNDNS = DefaultCNDNS
+	}
+	if config.FQDNS == "" {
+		config.FQDNS = DefaultFQDNS
+	}
+	if config.Mode == "" {
+		config.Mode = DefaultMode
+	}
+	if config.DNSPrefetchCount == 0 {
+		config.DNSPrefetchCount = DefaultPrefetchCount
+	}
+	if config.DNSPrefetchInterval == 0 {
+		config.DNSPrefetchInterval = DefaultPrefetchInterval
+	}
 
 	// bypass logic
 	var bypassCidrs []string
@@ -115,16 +139,16 @@ func runClient() {
 	cleanupCallback()
 }
 
-func runTLSServer() {
-	if *tlstoken == "" {
-		exitOnError(errors.New("missing -tlstoken"), nil)
+func runTLSServer(config *Config) {
+	if config.UpstreamTLSToken == "" {
+		exitOnError(errors.New("missing upstream-tls-token"), nil)
 	}
-	cert, err := tls.LoadX509KeyPair(*tlscrt, *tlskey)
+	cert, err := tls.LoadX509KeyPair(config.UpstreamTLSCRT, config.UpstreamTLSKey)
 	exitOnError(err, nil)
-	config := &tls.Config{Certificates: []tls.Certificate{cert}}
-	ln, err := tls.Listen("tcp", *tlsserver, config)
+	tlsCfg := &tls.Config{Certificates: []tls.Certificate{cert}}
+	ln, err := tls.Listen("tcp", config.UpstreamTLSServerListen, tlsCfg)
 	exitOnError(err, nil)
-	l.Info("TLS server running:", *tlsserver)
+	l.Info("TLS server running:", config.UpstreamTLSServerListen)
 	defer ln.Close()
 	for {
 		conn, err := ln.Accept()
@@ -145,7 +169,7 @@ func runTLSServer() {
 				l.Error(err)
 				return
 			}
-			if string(b) != *tlstoken {
+			if string(b) != config.UpstreamTLSToken {
 				l.Error("invalid token", string(b))
 				return
 			}
@@ -196,10 +220,23 @@ func main() {
 	} else {
 		l = logger.NewLogger(DefaultLogLevel)
 	}
-	if *tlsserver != "" {
-		runTLSServer()
+	var err error
+
+	if *configFile == "" {
+		fmt.Println("-config is required")
+		os.Exit(1)
+	}
+	config, err := LoadConfig(*configFile)
+	exitOnError(err, nil)
+	if config.AsUpstream {
+		switch config.UpstreamType {
+		case "tls":
+			runTLSServer(config)
+		default:
+			panic("unknow upstream-type:" + config.UpstreamType)
+		}
 	} else {
-		runClient()
+		runClient(config)
 	}
 }
 

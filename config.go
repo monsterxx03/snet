@@ -32,41 +32,47 @@ const (
 )
 
 type Config struct {
-	LHost                 string            `json:"listen-host"`
-	LPort                 int               `json:"listen-port"`
-	ProxyType             string            `json:"proxy-type"`
-	ProxyTimeout          int               `json:"proxy-timeout"`
-	ProxyScope            string            `json:"proxy-scope"`
-	BypassHosts           []string          `json:"bypass-hosts"`
-	BypassSrcIPs          []string          `json:"bypass-src-ips"`
-	HTTPProxyHost         string            `json:"http-proxy-host"`
-	HTTPProxyPort         int               `json:"http-proxy-port"`
-	HTTPProxyAuthUser     string            `json:"http-proxy-auth-user"`
-	HTTPProxyAuthPassword string            `json:"http-proxy-auth-password"`
-	SSHost                string            `json:"ss-host"`
-	SSPort                int               `json:"ss-port"`
-	SSCphierMethod        string            `json:"ss-chpier-method"`
-	SSPasswd              string            `json:"ss-passwd"`
-	TLSHost               string            `json:"tls-host"`
-	TLSPort               int               `json:"tls-port"`
-	TLSToken              string            `json:"tls-token"`
-	SOCKS5Host            string            `json:"socks5-host"`
-	SOCKS5Port            int               `json:"socks5-port"`
-	SOCKS5AuthUser        string            `json:"socks5-auth-user"`
-	SOCKS5AuthPassword    string            `json:"socks5-auth-password"`
-	CNDNS                 string            `json:"cn-dns"`
-	FQDNS                 string            `json:"fq-dns"`
-	EnableDNSCache        bool              `json:"enable-dns-cache"`
-	EnforceTTL            uint32            `json:"enforce-ttl"`
-	DNSPrefetchEnable     bool              `json:"dns-prefetch-enable"`
-	DNSPrefetchCount      int               `json:"dns-prefetch-count"`
-	DNSPrefetchInterval   int               `json:"dns-prefetch-interval"`
-	DisableQTypes         []string          `json:"disable-qtypes"`
-	ForceFQ               []string          `json:"force-fq"`
-	HostMap               map[string]string `json:"host-map"`
-	BlockHostFile         string            `json:"block-host-file"`
-	BlockHosts            []string          `json:"block-hosts"`
-	Mode                  string            `json:"mode"`
+	AsUpstream              bool              `json:"as-upstream"`
+	LHost                   string            `json:"listen-host"`
+	LPort                   int               `json:"listen-port"`
+	ProxyType               string            `json:"proxy-type"`
+	ProxyTimeout            int               `json:"proxy-timeout"`
+	ProxyScope              string            `json:"proxy-scope"`
+	BypassHosts             []string          `json:"bypass-hosts"`
+	BypassSrcIPs            []string          `json:"bypass-src-ips"`
+	HTTPProxyHost           string            `json:"http-proxy-host"`
+	HTTPProxyPort           int               `json:"http-proxy-port"`
+	HTTPProxyAuthUser       string            `json:"http-proxy-auth-user"`
+	HTTPProxyAuthPassword   string            `json:"http-proxy-auth-password"`
+	SSHost                  string            `json:"ss-host"`
+	SSPort                  int               `json:"ss-port"`
+	SSCphierMethod          string            `json:"ss-chpier-method"`
+	SSPasswd                string            `json:"ss-passwd"`
+	TLSHost                 string            `json:"tls-host"`
+	TLSPort                 int               `json:"tls-port"`
+	TLSToken                string            `json:"tls-token"`
+	SOCKS5Host              string            `json:"socks5-host"`
+	SOCKS5Port              int               `json:"socks5-port"`
+	SOCKS5AuthUser          string            `json:"socks5-auth-user"`
+	SOCKS5AuthPassword      string            `json:"socks5-auth-password"`
+	CNDNS                   string            `json:"cn-dns"`
+	FQDNS                   string            `json:"fq-dns"`
+	EnableDNSCache          bool              `json:"enable-dns-cache"`
+	EnforceTTL              uint32            `json:"enforce-ttl"`
+	DNSPrefetchEnable       bool              `json:"dns-prefetch-enable"`
+	DNSPrefetchCount        int               `json:"dns-prefetch-count"`
+	DNSPrefetchInterval     int               `json:"dns-prefetch-interval"`
+	DisableQTypes           []string          `json:"disable-qtypes"`
+	ForceFQ                 []string          `json:"force-fq"`
+	HostMap                 map[string]string `json:"host-map"`
+	BlockHostFile           string            `json:"block-host-file"`
+	BlockHosts              []string          `json:"block-hosts"`
+	Mode                    string            `json:"mode"`
+	UpstreamType            string            `json:"upstream-type"`
+	UpstreamTLSServerListen string            `json:"upstream-tls-server-listen"`
+	UpstreamTLSKey          string            `json:"upstream-tls-key"`
+	UpstreamTLSCRT          string            `json:"upstream-tls-crt"`
+	UpstreamTLSToken        string            `json:"upstream-tls-token"`
 }
 
 func LoadConfig(configPath string) (*Config, error) {
@@ -77,43 +83,6 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, err
-	}
-	if config.ProxyType == "" {
-		return nil, errors.New("missing proxy-type")
-	}
-	switch config.ProxyScope {
-	case "":
-		config.ProxyScope = proxyScopeBypassCN
-	case proxyScopeGlobal, proxyScopeBypassCN:
-	default:
-		return nil, errors.New("invalid proxy-scope " + config.ProxyScope)
-	}
-	if config.ProxyScope == "" {
-		config.ProxyScope = DefaultProxyScope
-	}
-	if config.LHost == "" {
-		config.LHost = DefaultLHost
-	}
-	if config.LPort == 0 {
-		config.LPort = DefaultLPort
-	}
-	if config.ProxyTimeout == 0 {
-		config.ProxyTimeout = DefaultProxyTimeout
-	}
-	if config.CNDNS == "" {
-		config.CNDNS = DefaultCNDNS
-	}
-	if config.FQDNS == "" {
-		config.FQDNS = DefaultFQDNS
-	}
-	if config.Mode == "" {
-		config.Mode = DefaultMode
-	}
-	if config.DNSPrefetchCount == 0 {
-		config.DNSPrefetchCount = DefaultPrefetchCount
-	}
-	if config.DNSPrefetchInterval == 0 {
-		config.DNSPrefetchInterval = DefaultPrefetchInterval
 	}
 	return &config, nil
 }

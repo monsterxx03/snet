@@ -1,4 +1,6 @@
 {
+    "as-upstream": false,
+
     "listen-host": "127.0.0.1",
     "listen-port": 1111,
     "proxy-type": "ss",
@@ -21,6 +23,7 @@
     "socks5-port": 1080,
     "socks5-auth-user": "",
     "socks5-auth-password": "",
+
     "cn-dns": "223.6.6.6",
     "fq-dns": "8.8.8.8",
     "enable-dns-cache": true,
@@ -34,4 +37,11 @@
     "block-host-file": "",
     "block-hosts": ["*.hpplay.cn"],
     "mode": "local"
+
+    "upstream-type": "tls",
+    "upstream-tls-server-listen": "0.0.0.0:9999",
+    "upstream-tls-key": "server.key",
+    "upstream-tls-crt": "server.pem",
+    "upstream-tls-token": "",
+
 }
