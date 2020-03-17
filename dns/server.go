@@ -50,6 +50,15 @@ type DNS struct {
 	l                    *logger.Logger
 }
 
+const (
+	reasonMapped    = "mapped"
+	reasonDisabled  = "disabled"
+	reasonBlocked   = "blocked"
+	reasonCached    = "cached"
+	reasonCNNoCache = "cn-nocache"
+	reasonFQNoCache = "fq-nocache"
+)
+
 func NewServer(c *config.Config, dnsPort int, chnroutes []string, l *logger.Logger) (*DNS, error) {
 	laddr := fmt.Sprintf("%s:%d", c.LHost, dnsPort)
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
@@ -95,6 +104,7 @@ func NewServer(c *config.Config, dnsPort int, chnroutes []string, l *logger.Logg
 	}
 	var dnsLogger *log.Logger
 	if c.DNSLoggingFile != "" {
+		l.Info("dns query logged in ", c.DNSLoggingFile)
 		f, err := os.OpenFile(c.DNSLoggingFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return nil, err
@@ -206,9 +216,9 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if err != nil {
 		return err
 	}
-	s.dnsLogger.Printf("ip: %s,domain:%s", reqUaddr.String(), dnsQuery.QDomain)
 	for _, t := range s.disableQTypes {
 		if strings.ToLower(t) == strings.ToLower(dnsQuery.QType.String()) {
+			s.log(reqUaddr.IP.String(), dnsQuery.QDomain, reasonDisabled)
 			resp := GetEmptyDNSResp(data)
 			if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
 				return err
@@ -217,6 +227,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		}
 	}
 	if ip, ok := s.hostMap[dnsQuery.QDomain]; ok {
+		s.log(reqUaddr.IP.String(), dnsQuery.QDomain, reasonMapped)
 		resp := GetDNSResp(data, dnsQuery.QDomain, ip)
 		if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
 			return err
@@ -226,6 +237,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 
 	if s.badDomain(dnsQuery.QDomain) {
 		s.l.Debug("block ad host", dnsQuery.QDomain)
+		s.log(reqUaddr.IP.String(), dnsQuery.QDomain, reasonBlocked)
 		// return 127.0.0.1 for this host
 		resp := GetDNSResp(data, dnsQuery.QDomain, "127.0.0.1")
 		if _, err := s.udpListener.WriteToUDP(resp, reqUaddr); err != nil {
@@ -237,6 +249,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		cachedData := s.cache.Get(dnsQuery.CacheKey())
 		if cachedData != nil {
 			s.l.Debug("dns cache hit:", dnsQuery.QDomain)
+			s.log(reqUaddr.IP.String(), dnsQuery.QDomain, reasonCached)
 			resp := cachedData.([]byte)
 			if len(resp) <= 2 {
 				s.l.Error("invalid cached data", resp, dnsQuery.QDomain, dnsQuery.QType.String())
@@ -251,7 +264,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 			}
 		}
 	}
-	raw, msg, err := s.doQuery(data, dnsQuery)
+	raw, msg, err := s.doQuery(reqUaddr.IP.String(), data, dnsQuery)
 	if err != nil {
 		return err
 	}
@@ -266,6 +279,12 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	}
 
 	return nil
+}
+
+func (s *DNS) log(src, domain, result string) {
+	if s.dnsLogger != nil {
+		s.dnsLogger.Printf("%s,%s,%s \n", src, domain, result)
+	}
 }
 
 func (s *DNS) getCacheTime(msg *DNSMsg) time.Duration {
@@ -286,7 +305,7 @@ func (s *DNS) parse(data []byte) (*DNSMsg, error) {
 	return msg, nil
 }
 
-func (s *DNS) doQuery(data []byte, dnsQuery *DNSMsg) (raw []byte, msg *DNSMsg, err error) {
+func (s *DNS) doQuery(srcIP string, data []byte, dnsQuery *DNSMsg) (raw []byte, msg *DNSMsg, err error) {
 	var wg sync.WaitGroup
 	var cnData, fqData []byte
 	var cnMsg, fqMsg *DNSMsg
@@ -320,8 +339,10 @@ func (s *DNS) doQuery(data []byte, dnsQuery *DNSMsg) (raw []byte, msg *DNSMsg, e
 			// if cn dns have response and it's an cn ip, we think it's a site in China
 			raw = cnData
 			msg = cnMsg
+			s.log(srcIP, dnsQuery.QDomain, reasonCNNoCache)
 		} else {
 			wg.Wait()
+			s.log(srcIP, dnsQuery.QDomain, reasonFQNoCache)
 			// use fq dns's response for all ip outside of China
 			raw = fqData
 			msg = fqMsg
@@ -405,7 +426,7 @@ func (s *DNS) prefetchTicker() {
 				s.l.Error(err)
 				continue
 			}
-			raw, msg, err := s.doQuery(qdata, qmsg)
+			raw, msg, err := s.doQuery("127.0.0.1", qdata, qmsg)
 			if err != nil {
 				s.l.Error(err)
 				continue

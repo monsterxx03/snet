@@ -112,6 +112,7 @@ Example config.json:
         "enforce-ttl": 3600,  # if > 0, will use this value otherthan A record's TTL
         "disable-qtypes": ["AAAA"], # return empty dns msg for those query types
         "force-fq": ["*.cloudfront.net"], # domain pattern matched will skip cn-dns query
+        "dns-logging-file": "dns.log",  # dns query will be logged in this file
 
         "dns-prefetch-enable": true,
         "dns-prefetch-count":  100,  # prefetch top 10 freq used domains in cache.
