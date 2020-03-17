@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"runtime/debug"
@@ -15,6 +16,7 @@ import (
 	"snet/bloomfilter"
 	"snet/cache"
 	"snet/cidradix"
+	"snet/config"
 	"snet/logger"
 	"snet/utils"
 )
@@ -44,28 +46,27 @@ type DNS struct {
 	prefetchEnable       bool
 	prefetchCount        int
 	prefetchInterval     int
+	dnsLogger            *log.Logger
 	l                    *logger.Logger
 }
 
-func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, DisableQTypes []string,
-	ForceFq []string, HostMap map[string]string, BlockHostFile string, AdditionalBlockHosts []string,
-	prefetchEnable bool, prefetchCount int, prefetchInterval int,
-	chnroutes []string, l *logger.Logger) (*DNS, error) {
+func NewServer(c *config.Config, dnsPort int, chnroutes []string, l *logger.Logger) (*DNS, error) {
+	laddr := fmt.Sprintf("%s:%d", c.LHost, dnsPort)
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
 	}
-	var c *cache.LRU
-	if enableCache {
-		c, err = cache.NewLRU(cacheSize)
+	var cl *cache.LRU
+	if c.EnableDNSCache {
+		cl, err = cache.NewLRU(cacheSize)
 		if err != nil {
 			return nil, err
 		}
 	}
 	var bf *bloomfilter.Bloomfilter
 	lines := []string{}
-	if BlockHostFile != "" {
-		f, err := os.Open(BlockHostFile)
+	if c.BlockHostFile != "" {
+		f, err := os.Open(c.BlockHostFile)
 		if err != nil {
 			return nil, err
 		}
@@ -92,6 +93,14 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 		}
 		l.Debugf("load ad hosts %d lines, cost: %v", count, time.Now().Sub(now))
 	}
+	var dnsLogger *log.Logger
+	if c.DNSLoggingFile != "" {
+		f, err := os.OpenFile(c.DNSLoggingFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, err
+		}
+		dnsLogger = log.New(f, "", log.LstdFlags)
+	}
 
 	// build radix tree for cidr
 	tree := cidradix.NewTree()
@@ -104,20 +113,21 @@ func NewServer(laddr, cnDNS, fqDNS string, enableCache bool, enforceTTL uint32, 
 	}
 	return &DNS{
 		udpAddr:              uaddr,
-		cnDNS:                cnDNS,
-		fqDNS:                fqDNS,
-		enforceTTL:           enforceTTL,
-		disableQTypes:        DisableQTypes,
-		forceFQ:              ForceFq,
-		hostMap:              HostMap,
+		cnDNS:                c.CNDNS,
+		fqDNS:                c.FQDNS,
+		enforceTTL:           c.EnforceTTL,
+		disableQTypes:        c.DisableQTypes,
+		forceFQ:              c.ForceFQ,
+		hostMap:              c.HostMap,
 		blockHostsBF:         bf,
 		blockHosts:           lines,
-		additionalBlockHosts: AdditionalBlockHosts,
+		additionalBlockHosts: c.BlockHosts,
 		chnroutesTree:        tree,
-		cache:                c,
-		prefetchEnable:       prefetchEnable,
-		prefetchCount:        prefetchCount,
-		prefetchInterval:     prefetchInterval,
+		cache:                cl,
+		prefetchEnable:       c.DNSPrefetchEnable,
+		prefetchCount:        c.DNSPrefetchCount,
+		prefetchInterval:     c.DNSPrefetchInterval,
+		dnsLogger:            dnsLogger,
 		l:                    l,
 	}, nil
 }
@@ -196,6 +206,7 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if err != nil {
 		return err
 	}
+	s.dnsLogger.Printf("ip: %s,domain:%s", reqUaddr.String(), dnsQuery.QDomain)
 	for _, t := range s.disableQTypes {
 		if strings.ToLower(t) == strings.ToLower(dnsQuery.QType.String()) {
 			resp := GetEmptyDNSResp(data)

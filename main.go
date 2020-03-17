@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"snet/config"
 	"snet/dns"
 	"snet/logger"
 	"snet/redirector"
@@ -37,55 +38,55 @@ var version = flag.Bool("version", false, "print version only")
 var verbose = flag.Bool("v", false, "verbose output")
 var l *logger.Logger
 
-func runClient(config *Config) {
-	dnsPort := config.LPort + 100
-	if config.ProxyType == "" {
+func runClient(c *config.Config) {
+	dnsPort := c.LPort + 100
+	if c.ProxyType == "" {
 		panic("missing proxy-type")
 	}
-	switch config.ProxyScope {
+	switch c.ProxyScope {
 	case "":
-		config.ProxyScope = proxyScopeBypassCN
+		c.ProxyScope = proxyScopeBypassCN
 	case proxyScopeGlobal, proxyScopeBypassCN:
 	default:
-		panic("invalid proxy-scope " + config.ProxyScope)
+		panic("invalid proxy-scope " + c.ProxyScope)
 	}
-	if config.ProxyScope == "" {
-		config.ProxyScope = DefaultProxyScope
+	if c.ProxyScope == "" {
+		c.ProxyScope = DefaultProxyScope
 	}
-	if config.LHost == "" {
-		config.LHost = DefaultLHost
+	if c.LHost == "" {
+		c.LHost = DefaultLHost
 	}
-	if config.LPort == 0 {
-		config.LPort = DefaultLPort
+	if c.LPort == 0 {
+		c.LPort = DefaultLPort
 	}
-	if config.ProxyTimeout == 0 {
-		config.ProxyTimeout = DefaultProxyTimeout
+	if c.ProxyTimeout == 0 {
+		c.ProxyTimeout = DefaultProxyTimeout
 	}
-	if config.CNDNS == "" {
-		config.CNDNS = DefaultCNDNS
+	if c.CNDNS == "" {
+		c.CNDNS = DefaultCNDNS
 	}
-	if config.FQDNS == "" {
-		config.FQDNS = DefaultFQDNS
+	if c.FQDNS == "" {
+		c.FQDNS = DefaultFQDNS
 	}
-	if config.Mode == "" {
-		config.Mode = DefaultMode
+	if c.Mode == "" {
+		c.Mode = DefaultMode
 	}
-	if config.DNSPrefetchCount == 0 {
-		config.DNSPrefetchCount = DefaultPrefetchCount
+	if c.DNSPrefetchCount == 0 {
+		c.DNSPrefetchCount = DefaultPrefetchCount
 	}
-	if config.DNSPrefetchInterval == 0 {
-		config.DNSPrefetchInterval = DefaultPrefetchInterval
+	if c.DNSPrefetchInterval == 0 {
+		c.DNSPrefetchInterval = DefaultPrefetchInterval
 	}
 
 	// bypass logic
 	var bypassCidrs []string
-	if config.ProxyScope == proxyScopeBypassCN {
+	if c.ProxyScope == proxyScopeBypassCN {
 		bypassCidrs = Chnroutes
 	} else {
 		bypassCidrs = []string{}
 	}
 	if !*clean {
-		for _, h := range config.BypassHosts {
+		for _, h := range c.BypassHosts {
 			ips, err := net.LookupIP(h)
 			if err != nil {
 				exitOnError(err, nil)
@@ -96,12 +97,12 @@ func runClient(config *Config) {
 		}
 
 	}
-	redir, err := redirector.NewRedirector(bypassCidrs, config.BypassSrcIPs, l)
+	redir, err := redirector.NewRedirector(bypassCidrs, c.BypassSrcIPs, l)
 	exitOnError(err, nil)
 
 	cleanupCallback := func() {
 		l.Info("cleanup redirector rules")
-		redir.CleanupRules(config.Mode, config.LHost, config.LPort, dnsPort)
+		redir.CleanupRules(c.Mode, c.LHost, c.LPort, dnsPort)
 		redir.Destroy()
 	}
 
@@ -109,7 +110,7 @@ func runClient(config *Config) {
 		cleanupCallback()
 		os.Exit(0)
 	}
-	s, err := NewServer(config)
+	s, err := NewServer(c)
 	exitOnError(err, nil)
 	proxyIP := s.proxy.GetProxyIP()
 	exitOnError(err, nil)
@@ -117,12 +118,9 @@ func runClient(config *Config) {
 	exitOnError(redir.Init(), nil)
 	exitOnError(redir.ByPass(proxyIP.String()), nil)
 
-	exitOnError(redir.SetupRules(config.Mode, config.LHost, config.LPort, dnsPort, config.CNDNS), cleanupCallback)
+	exitOnError(redir.SetupRules(c.Mode, c.LHost, c.LPort, dnsPort, c.CNDNS), cleanupCallback)
 
-	addr := fmt.Sprintf("%s:%d", config.LHost, dnsPort)
-	dns, err := dns.NewServer(addr, config.CNDNS, config.FQDNS, config.EnableDNSCache, config.EnforceTTL, config.DisableQTypes, config.ForceFQ, config.HostMap, config.BlockHostFile, config.BlockHosts,
-		config.DNSPrefetchEnable, config.DNSPrefetchCount, config.DNSPrefetchInterval,
-		Chnroutes, l)
+	dns, err := dns.NewServer(c, dnsPort, Chnroutes, l)
 	exitOnError(err, cleanupCallback)
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -139,16 +137,16 @@ func runClient(config *Config) {
 	cleanupCallback()
 }
 
-func runTLSServer(config *Config) {
-	if config.UpstreamTLSToken == "" {
+func runTLSServer(c *config.Config) {
+	if c.UpstreamTLSToken == "" {
 		exitOnError(errors.New("missing upstream-tls-token"), nil)
 	}
-	cert, err := tls.LoadX509KeyPair(config.UpstreamTLSCRT, config.UpstreamTLSKey)
+	cert, err := tls.LoadX509KeyPair(c.UpstreamTLSCRT, c.UpstreamTLSKey)
 	exitOnError(err, nil)
 	tlsCfg := &tls.Config{Certificates: []tls.Certificate{cert}}
-	ln, err := tls.Listen("tcp", config.UpstreamTLSServerListen, tlsCfg)
+	ln, err := tls.Listen("tcp", c.UpstreamTLSServerListen, tlsCfg)
 	exitOnError(err, nil)
-	l.Info("TLS server running:", config.UpstreamTLSServerListen)
+	l.Info("TLS server running:", c.UpstreamTLSServerListen)
 	defer ln.Close()
 	for {
 		conn, err := ln.Accept()
@@ -169,7 +167,7 @@ func runTLSServer(config *Config) {
 				l.Error(err)
 				return
 			}
-			if string(b) != config.UpstreamTLSToken {
+			if string(b) != c.UpstreamTLSToken {
 				l.Error("invalid token", string(b))
 				return
 			}
@@ -226,17 +224,17 @@ func main() {
 		fmt.Println("-config is required")
 		os.Exit(1)
 	}
-	config, err := LoadConfig(*configFile)
+	c, err := config.LoadConfig(*configFile)
 	exitOnError(err, nil)
-	if config.AsUpstream {
-		switch config.UpstreamType {
+	if c.AsUpstream {
+		switch c.UpstreamType {
 		case "tls":
-			runTLSServer(config)
+			runTLSServer(c)
 		default:
-			panic("unknow upstream-type:" + config.UpstreamType)
+			panic("unknow upstream-type:" + c.UpstreamType)
 		}
 	} else {
-		runClient(config)
+		runClient(c)
 	}
 }
 

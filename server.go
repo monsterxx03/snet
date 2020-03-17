@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"snet/config"
 	"snet/proxy"
 	"snet/redirector"
 	"snet/utils"
@@ -20,7 +21,7 @@ type Server struct {
 	timeout  time.Duration
 }
 
-func NewServer(c *Config) (*Server, error) {
+func NewServer(c *config.Config) (*Server, error) {
 	addr := fmt.Sprintf("%s:%d", c.LHost, c.LPort)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {

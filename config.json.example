@@ -24,6 +24,7 @@
     "socks5-auth-user": "",
     "socks5-auth-password": "",
 
+    "dns-logging-file": "",
     "cn-dns": "223.6.6.6",
     "fq-dns": "8.8.8.8",
     "enable-dns-cache": true,
