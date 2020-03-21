@@ -150,6 +150,12 @@ func (r *IPTables) CleanupRules(mode string, snetHost string, snetPort int, dnsP
 	if mode == modeRouter {
 		utils.Sh("iptables -t nat -D PREROUTING -p tcp -j", chainName)
 		utils.Sh("iptables -t nat -D PREROUTING -p udp --dport 53 -j REDIRECT --to-port", dport)
+		for _, src := range r.byPassSrcIPs {
+			if out, err := utils.Sh("iptables -t nat -D PREROUTING -p tcp", "-s", src, "-j RETURN"); err != nil {
+				r.l.Error(out)
+				return err
+			}
+		}
 	}
 	utils.Sh("iptables -t nat -F", chainName)
 	utils.Sh("iptables -t nat -X", chainName)
