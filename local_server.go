@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net"
+	"sync"
 
 	"snet/config"
 	"snet/dns"
@@ -16,6 +17,8 @@ type LocalServer struct {
 	dnServer *dns.DNS
 	dnsPort  int
 	server   *Server
+	quit     bool
+	qlock    sync.Mutex
 	ctx      context.Context
 }
 
@@ -72,13 +75,20 @@ func (s *LocalServer) SetupDNServer() error {
 }
 
 func (s *LocalServer) Shutdown() {
+	s.qlock.Lock()
+	defer s.qlock.Unlock()
+	if s.quit {
+		return
+	}
 	s.dnServer.Shutdown()
 	s.server.Shutdown()
 	s.Clean()
+	s.quit = true
 }
 
 func (s *LocalServer) Run() {
 	var err error
+	s.quit = false
 	s.server, err = NewServer(s.cfg)
 	exitOnError(err, nil)
 	exitOnError(s.SetupDNServer(), nil)
