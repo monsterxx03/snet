@@ -48,6 +48,7 @@ type DNS struct {
 	dnsLoggingFile       string
 	dnsLogger            *log.Logger
 	Cache                *cache.LRU
+	quit                 chan bool
 	l                    *logger.Logger
 }
 
@@ -129,6 +130,7 @@ func NewServer(c *config.Config, dnsPort int, chnroutes []string, l *logger.Logg
 		prefetchCount:        c.DNSPrefetchCount,
 		prefetchInterval:     c.DNSPrefetchInterval,
 		dnsLoggingFile:       c.DNSLoggingFile,
+		quit:                 make(chan bool),
 		l:                    l,
 	}, nil
 }
@@ -173,6 +175,7 @@ func (s *DNS) Shutdown() error {
 		return err
 	}
 	s.l.Info("dns server shutdown")
+	s.quit <- true
 	return nil
 }
 
@@ -415,26 +418,32 @@ func decodeCacheKey(key string) (qdomain string, qtype RType) {
 func (s *DNS) prefetchTicker() {
 	ticker := time.NewTicker(time.Duration(s.prefetchInterval) * time.Second)
 	defer ticker.Stop()
-	for ; true; <-ticker.C {
-		s.l.Info("starting dns prefetch for top", s.prefetchCount)
-		for _, item := range s.Cache.PrefetchTopN(s.prefetchCount) {
-			s.l.Info("prefetch for ", item.Key)
-			qdomain, qtype := decodeCacheKey(item.Key)
-			qdata := GetDNSQuery(qdomain, qtype)
-			qmsg, err := s.parse(qdata)
-			if err != nil {
-				s.l.Error(err)
-				continue
-			}
-			raw, msg, err := s.doQuery("127.0.0.1", qdata, qmsg)
-			if err != nil {
-				s.l.Error(err)
-				continue
-			}
-			if len(raw) > 0 {
-				ttl := s.getCacheTime(msg)
-				s.Cache.Evict(qmsg.CacheKey())
-				s.Cache.Add(qmsg.CacheKey(), raw, ttl)
+	for {
+		select {
+		case <-s.quit:
+			s.l.Info("stop dns prefetch")
+			return
+		case <-ticker.C:
+			s.l.Info("starting dns prefetch for top", s.prefetchCount)
+			for _, item := range s.Cache.PrefetchTopN(s.prefetchCount) {
+				s.l.Info("prefetch for ", item.Key)
+				qdomain, qtype := decodeCacheKey(item.Key)
+				qdata := GetDNSQuery(qdomain, qtype)
+				qmsg, err := s.parse(qdata)
+				if err != nil {
+					s.l.Error(err)
+					continue
+				}
+				raw, msg, err := s.doQuery("127.0.0.1", qdata, qmsg)
+				if err != nil {
+					s.l.Error(err)
+					continue
+				}
+				if len(raw) > 0 {
+					ttl := s.getCacheTime(msg)
+					s.Cache.Evict(qmsg.CacheKey())
+					s.Cache.Add(qmsg.CacheKey(), raw, ttl)
+				}
 			}
 		}
 	}

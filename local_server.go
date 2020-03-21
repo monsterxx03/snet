@@ -16,7 +16,6 @@ type LocalServer struct {
 	cfgChan  chan *config.Config
 	redir    redirector.Redirector
 	dnServer *dns.DNS
-	dnsPort  int
 	server   *Server
 	quit     bool
 	qlock    sync.Mutex
@@ -25,7 +24,7 @@ type LocalServer struct {
 
 func (s *LocalServer) Clean() {
 	l.Info("cleanup redirector rules")
-	s.redir.CleanupRules(s.cfg.Mode, s.cfg.LHost, s.cfg.LPort, s.dnsPort)
+	s.redir.CleanupRules(s.cfg.Mode, s.cfg.LHost, s.cfg.LPort, s.DNSPort())
 	s.redir.Destroy()
 }
 
@@ -57,20 +56,22 @@ func (s *LocalServer) SetupRedirector() error {
 	if err := s.redir.ByPass(proxyIP.String()); err != nil {
 		return err
 	}
-	if err := s.redir.SetupRules(s.cfg.Mode, s.cfg.LHost, s.cfg.LPort, s.dnsPort, s.cfg.CNDNS); err != nil {
+	if err := s.redir.SetupRules(s.cfg.Mode, s.cfg.LHost, s.cfg.LPort, s.DNSPort(), s.cfg.CNDNS); err != nil {
 		s.Clean()
 		return err
 	}
 	return nil
 }
 
+func (s *LocalServer) DNSPort() int {
+	return s.cfg.LPort + 100
+}
+
 func (s *LocalServer) SetupDNServer(dnsCache *cache.LRU) error {
-	dnsPort := s.cfg.LPort + 100
-	dns, err := dns.NewServer(s.cfg, dnsPort, Chnroutes, l)
+	dns, err := dns.NewServer(s.cfg, s.DNSPort(), Chnroutes, l)
 	if err != nil {
 		return err
 	}
-	s.dnsPort = dnsPort
 	s.dnServer = dns
 	if dnsCache != nil {
 		s.dnServer.Cache = dnsCache

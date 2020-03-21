@@ -16,6 +16,7 @@ const (
 )
 
 type Server struct {
+	cfg      *config.Config
 	listener *net.TCPListener
 	proxy    proxy.Proxy
 	timeout  time.Duration
@@ -27,7 +28,6 @@ func NewServer(c *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.Info("Proxy server listen on tcp:", addr)
 
 	if err != nil {
 		return nil, err
@@ -44,6 +44,7 @@ func NewServer(c *config.Config) (*Server, error) {
 		return nil, err
 	}
 	return &Server{
+		cfg:      c,
 		listener: ln.(*net.TCPListener),
 		proxy:    p,
 		timeout:  time.Duration(c.ProxyTimeout) * time.Second,
@@ -51,6 +52,7 @@ func NewServer(c *config.Config) (*Server, error) {
 }
 
 func (s *Server) Run() error {
+	l.Infof("Proxy server listen on tcp %s:%d", s.cfg.LHost, s.cfg.LPort)
 	for {
 		conn, err := s.listener.AcceptTCP()
 		if err != nil {
