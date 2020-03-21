@@ -155,6 +155,17 @@ Traffic from docker container's src ip is 172.17.0.1/16, it will go through `nat
 
 The main reason I need a `client mode` and `router mode` is handling DNS redirct, don't know how to make it work for `PREROUTING chain` and `OUTPUT chain` at the same time.
 
+## Hot reload
+
+If config.json is changed, use HUP signal to do reload.
+
+    kill -HUP $(pgrep snet)
+
+During hot reload:
+
+- dns cache will be reserved.
+- all tcp connections will be closed.
+
 ## Notice
 
 If crash or force killed(kill -9), snet will have no chance to cleanup iptables/pf rules, it will make you have no internet access.
