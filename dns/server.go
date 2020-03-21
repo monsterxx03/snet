@@ -46,6 +46,7 @@ type DNS struct {
 	prefetchEnable       bool
 	prefetchCount        int
 	prefetchInterval     int
+	dnsLoggingFile       string
 	dnsLogger            *log.Logger
 	l                    *logger.Logger
 }
@@ -102,16 +103,6 @@ func NewServer(c *config.Config, dnsPort int, chnroutes []string, l *logger.Logg
 		}
 		l.Debugf("load ad hosts %d lines, cost: %v", count, time.Now().Sub(now))
 	}
-	var dnsLogger *log.Logger
-	if c.DNSLoggingFile != "" {
-		l.Info("dns query logged in ", c.DNSLoggingFile)
-		f, err := os.OpenFile(c.DNSLoggingFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return nil, err
-		}
-		dnsLogger = log.New(f, "", log.LstdFlags)
-	}
-
 	// build radix tree for cidr
 	tree := cidradix.NewTree()
 	for _, route := range chnroutes {
@@ -137,13 +128,21 @@ func NewServer(c *config.Config, dnsPort int, chnroutes []string, l *logger.Logg
 		prefetchEnable:       c.DNSPrefetchEnable,
 		prefetchCount:        c.DNSPrefetchCount,
 		prefetchInterval:     c.DNSPrefetchInterval,
-		dnsLogger:            dnsLogger,
+		dnsLoggingFile:       c.DNSLoggingFile,
 		l:                    l,
 	}, nil
 }
 
 func (s *DNS) Run() error {
 	var err error
+	if s.dnsLoggingFile != "" {
+		s.l.Info("dns query logged in ", s.dnsLoggingFile)
+		f, err := os.OpenFile(s.dnsLoggingFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return err
+		}
+		s.dnsLogger = log.New(f, "", log.LstdFlags)
+	}
 	s.udpListener, err = net.ListenUDP("udp", s.udpAddr)
 	if err != nil {
 		return err

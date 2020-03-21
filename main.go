@@ -2,22 +2,14 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"encoding/binary"
-	"errors"
 	"flag"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"snet/config"
-	"snet/dns"
 	"snet/logger"
-	"snet/redirector"
-	"snet/utils"
 )
 
 //go:generate go run chnroutes_generate.go
@@ -37,171 +29,6 @@ var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 var version = flag.Bool("version", false, "print version only")
 var verbose = flag.Bool("v", false, "verbose output")
 var l *logger.Logger
-
-func runClient(c *config.Config) {
-	dnsPort := c.LPort + 100
-	if c.ProxyType == "" {
-		panic("missing proxy-type")
-	}
-	switch c.ProxyScope {
-	case "":
-		c.ProxyScope = proxyScopeBypassCN
-	case proxyScopeGlobal, proxyScopeBypassCN:
-	default:
-		panic("invalid proxy-scope " + c.ProxyScope)
-	}
-	if c.ProxyScope == "" {
-		c.ProxyScope = DefaultProxyScope
-	}
-	if c.LHost == "" {
-		c.LHost = DefaultLHost
-	}
-	if c.LPort == 0 {
-		c.LPort = DefaultLPort
-	}
-	if c.ProxyTimeout == 0 {
-		c.ProxyTimeout = DefaultProxyTimeout
-	}
-	if c.CNDNS == "" {
-		c.CNDNS = DefaultCNDNS
-	}
-	if c.FQDNS == "" {
-		c.FQDNS = DefaultFQDNS
-	}
-	if c.Mode == "" {
-		c.Mode = DefaultMode
-	}
-	if c.DNSPrefetchCount == 0 {
-		c.DNSPrefetchCount = DefaultPrefetchCount
-	}
-	if c.DNSPrefetchInterval == 0 {
-		c.DNSPrefetchInterval = DefaultPrefetchInterval
-	}
-
-	// bypass logic
-	var bypassCidrs []string
-	if c.ProxyScope == proxyScopeBypassCN {
-		bypassCidrs = Chnroutes
-	} else {
-		bypassCidrs = []string{}
-	}
-	if !*clean {
-		for _, h := range c.BypassHosts {
-			ips, err := net.LookupIP(h)
-			if err != nil {
-				exitOnError(err, nil)
-			}
-			for _, ip := range ips {
-				bypassCidrs = append(bypassCidrs, ip.String())
-			}
-		}
-
-	}
-	redir, err := redirector.NewRedirector(bypassCidrs, c.BypassSrcIPs, l)
-	exitOnError(err, nil)
-
-	cleanupCallback := func() {
-		l.Info("cleanup redirector rules")
-		redir.CleanupRules(c.Mode, c.LHost, c.LPort, dnsPort)
-		redir.Destroy()
-	}
-
-	if *clean {
-		cleanupCallback()
-		os.Exit(0)
-	}
-	s, err := NewServer(c)
-	exitOnError(err, nil)
-	proxyIP := s.proxy.GetProxyIP()
-	exitOnError(err, nil)
-
-	exitOnError(redir.Init(), nil)
-	exitOnError(redir.ByPass(proxyIP.String()), nil)
-
-	exitOnError(redir.SetupRules(c.Mode, c.LHost, c.LPort, dnsPort, c.CNDNS), cleanupCallback)
-
-	dns, err := dns.NewServer(c, dnsPort, Chnroutes, l)
-	exitOnError(err, cleanupCallback)
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGHUP)
-		l.Info("Got signal:", <-c)
-		cancel()
-	}()
-	go dns.Run()
-	go s.Run()
-	<-ctx.Done()
-	dns.Shutdown()
-	s.Shutdown()
-	cleanupCallback()
-}
-
-func runTLSServer(c *config.Config) {
-	if c.UpstreamTLSToken == "" {
-		exitOnError(errors.New("missing upstream-tls-token"), nil)
-	}
-	cert, err := tls.LoadX509KeyPair(c.UpstreamTLSCRT, c.UpstreamTLSKey)
-	exitOnError(err, nil)
-	tlsCfg := &tls.Config{Certificates: []tls.Certificate{cert}}
-	ln, err := tls.Listen("tcp", c.UpstreamTLSServerListen, tlsCfg)
-	exitOnError(err, nil)
-	l.Info("TLS server running:", c.UpstreamTLSServerListen)
-	defer ln.Close()
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			l.Error(err)
-			continue
-		}
-		go func(conn net.Conn) {
-			defer conn.Close()
-			b := make([]byte, 2)
-			if _, err := conn.Read(b); err != nil {
-				l.Error(err)
-				return
-			}
-			tlen := binary.BigEndian.Uint16(b)
-			b = make([]byte, int(tlen))
-			if _, err := conn.Read(b); err != nil {
-				l.Error(err)
-				return
-			}
-			if string(b) != c.UpstreamTLSToken {
-				l.Error("invalid token", string(b))
-				return
-			}
-
-			b = make([]byte, 2)
-			if _, err := conn.Read(b); err != nil {
-				l.Error(err)
-				return
-			}
-			hlen := binary.BigEndian.Uint16(b)
-			b = make([]byte, int(hlen))
-			if _, err := conn.Read(b); err != nil {
-				l.Error(err)
-				return
-			}
-			host := string(b)
-			b = make([]byte, 2)
-			if _, err := conn.Read(b); err != nil {
-				l.Error(err)
-				return
-			}
-			port := int(binary.BigEndian.Uint16(b))
-			dstConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
-			if err != nil {
-				l.Error(err)
-				return
-			}
-			defer dstConn.Close()
-			if err := utils.Pipe(conn, dstConn, time.Duration(30)*time.Second); err != nil {
-				l.Error(err)
-			}
-		}(conn)
-	}
-}
 
 func main() {
 	flag.Parse()
@@ -234,7 +61,32 @@ func main() {
 			panic("unknow upstream-type:" + c.UpstreamType)
 		}
 	} else {
-		runClient(c)
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+			l.Info("Got signal:", <-c)
+			cancel()
+		}()
+		go func() {
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, syscall.SIGHUP)
+			for {
+				l.Info("Got signal:", <-c)
+				_, err := config.LoadConfig(*configFile)
+				if err != nil {
+					l.Error("Failed to reload config:", err)
+					continue
+				}
+				l.Infof("%s reloaded", *configFile)
+			}
+		}()
+		s := NewLocalServer(ctx, c)
+		if *clean {
+			s.Clean()
+		} else {
+			s.Run()
+		}
 	}
 }
 
