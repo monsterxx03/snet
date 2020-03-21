@@ -85,7 +85,7 @@ func main() {
 					s.cfgChan <- cfg
 				}
 			}()
-			s.Run()
+			s.Run(nil)
 		}
 	}
 }

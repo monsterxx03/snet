@@ -42,12 +42,12 @@ type DNS struct {
 	blockHosts           []string
 	additionalBlockHosts []string
 	chnroutesTree        *cidradix.Tree
-	cache                *cache.LRU
 	prefetchEnable       bool
 	prefetchCount        int
 	prefetchInterval     int
 	dnsLoggingFile       string
 	dnsLogger            *log.Logger
+	Cache                *cache.LRU
 	l                    *logger.Logger
 }
 
@@ -124,7 +124,7 @@ func NewServer(c *config.Config, dnsPort int, chnroutes []string, l *logger.Logg
 		blockHosts:           lines,
 		additionalBlockHosts: c.BlockHosts,
 		chnroutesTree:        tree,
-		cache:                cl,
+		Cache:                cl,
 		prefetchEnable:       c.DNSPrefetchEnable,
 		prefetchCount:        c.DNSPrefetchCount,
 		prefetchInterval:     c.DNSPrefetchInterval,
@@ -149,7 +149,7 @@ func (s *DNS) Run() error {
 	}
 	s.l.Info("DNS server listen on udp:", s.udpAddr)
 	defer s.udpListener.Close()
-	if s.cache != nil && s.prefetchEnable {
+	if s.Cache != nil && s.prefetchEnable {
 		s.l.Info("Starting dns prefetch ticker")
 		go s.prefetchTicker()
 	}
@@ -245,8 +245,8 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 		}
 		return nil
 	}
-	if s.cache != nil {
-		cachedData := s.cache.Get(dnsQuery.CacheKey())
+	if s.Cache != nil {
+		cachedData := s.Cache.Get(dnsQuery.CacheKey())
 		if cachedData != nil {
 			s.l.Debug("dns cache hit:", dnsQuery.QDomain)
 			s.log(reqUaddr.IP.String(), dnsQuery.QDomain, reasonCached)
@@ -272,10 +272,10 @@ func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
 	if _, err := s.udpListener.WriteToUDP(raw, reqUaddr); err != nil {
 		return err
 	}
-	if s.cache != nil && len(raw) > 0 {
+	if s.Cache != nil && len(raw) > 0 {
 		ttl := s.getCacheTime(msg)
 		// add to dns cache
-		s.cache.Add(dnsQuery.CacheKey(), raw, ttl)
+		s.Cache.Add(dnsQuery.CacheKey(), raw, ttl)
 	}
 
 	return nil
@@ -417,7 +417,7 @@ func (s *DNS) prefetchTicker() {
 	defer ticker.Stop()
 	for ; true; <-ticker.C {
 		s.l.Info("starting dns prefetch for top", s.prefetchCount)
-		for _, item := range s.cache.PrefetchTopN(s.prefetchCount) {
+		for _, item := range s.Cache.PrefetchTopN(s.prefetchCount) {
 			s.l.Info("prefetch for ", item.Key)
 			qdomain, qtype := decodeCacheKey(item.Key)
 			qdata := GetDNSQuery(qdomain, qtype)
@@ -433,8 +433,8 @@ func (s *DNS) prefetchTicker() {
 			}
 			if len(raw) > 0 {
 				ttl := s.getCacheTime(msg)
-				s.cache.Evict(qmsg.CacheKey())
-				s.cache.Add(qmsg.CacheKey(), raw, ttl)
+				s.Cache.Evict(qmsg.CacheKey())
+				s.Cache.Add(qmsg.CacheKey(), raw, ttl)
 			}
 		}
 	}

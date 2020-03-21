@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 
+	"snet/cache"
 	"snet/config"
 	"snet/dns"
 	"snet/redirector"
@@ -63,7 +64,7 @@ func (s *LocalServer) SetupRedirector() error {
 	return nil
 }
 
-func (s *LocalServer) SetupDNServer() error {
+func (s *LocalServer) SetupDNServer(dnsCache *cache.LRU) error {
 	dnsPort := s.cfg.LPort + 100
 	dns, err := dns.NewServer(s.cfg, dnsPort, Chnroutes, l)
 	if err != nil {
@@ -71,6 +72,9 @@ func (s *LocalServer) SetupDNServer() error {
 	}
 	s.dnsPort = dnsPort
 	s.dnServer = dns
+	if dnsCache != nil {
+		s.dnServer.Cache = dnsCache
+	}
 	return nil
 }
 
@@ -86,19 +90,20 @@ func (s *LocalServer) Shutdown() {
 	s.quit = true
 }
 
-func (s *LocalServer) Run() {
+func (s *LocalServer) Run(dnsCache *cache.LRU) {
 	var err error
 	s.quit = false
 	s.server, err = NewServer(s.cfg)
 	exitOnError(err, nil)
-	exitOnError(s.SetupDNServer(), nil)
+	exitOnError(s.SetupDNServer(dnsCache), nil)
 	exitOnError(s.SetupRedirector(), nil)
 
 	go func() {
 		cfg := <-s.cfgChan
 		s.Shutdown()
 		s.cfg = cfg
-		s.Run()
+		oldCache := s.dnServer.Cache
+		s.Run(oldCache)
 	}()
 
 	go s.dnServer.Run()
