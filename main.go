@@ -62,29 +62,29 @@ func main() {
 		}
 	} else {
 		ctx, cancel := context.WithCancel(context.Background())
-		go func() {
-			c := make(chan os.Signal, 1)
-			signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
-			l.Info("Got signal:", <-c)
-			cancel()
-		}()
-		go func() {
-			c := make(chan os.Signal, 1)
-			signal.Notify(c, syscall.SIGHUP)
-			for {
-				l.Info("Got signal:", <-c)
-				_, err := config.LoadConfig(*configFile)
-				if err != nil {
-					l.Error("Failed to reload config:", err)
-					continue
-				}
-				l.Infof("%s reloaded", *configFile)
-			}
-		}()
 		s := NewLocalServer(ctx, c)
 		if *clean {
 			s.Clean()
 		} else {
+			go func() {
+				c := make(chan os.Signal, 1)
+				signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+				l.Info("Got signal:", <-c)
+				cancel()
+			}()
+			go func() {
+				c := make(chan os.Signal, 1)
+				signal.Notify(c, syscall.SIGHUP)
+				for {
+					l.Info("Got signal:", <-c)
+					cfg, err := config.LoadConfig(*configFile)
+					if err != nil {
+						l.Error("Failed to reload config:", err)
+						continue
+					}
+					s.cfgChan <- cfg
+				}
+			}()
 			s.Run()
 		}
 	}

@@ -172,6 +172,7 @@ func (s *DNS) Shutdown() error {
 	if err := s.udpListener.Close(); err != nil {
 		return err
 	}
+	s.l.Info("dns server shutdown")
 	return nil
 }
 

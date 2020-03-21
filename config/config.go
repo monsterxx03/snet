@@ -2,7 +2,26 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
+)
+
+const (
+	ProxyScopeBypassCN = "bypassCN"
+	ProxyScopeGlobal   = "global"
+)
+
+const (
+	DefaultLHost            = "127.0.0.1"
+	DefaultLPort            = 1111
+	DefaultProxyTimeout     = 30
+	DefaultProxyType        = "ss"
+	DefaultProxyScope       = ProxyScopeBypassCN
+	DefaultCNDNS            = "223.6.6.6"
+	DefaultFQDNS            = "8.8.8.8"
+	DefaultMode             = "local"
+	DefaultPrefetchCount    = 10
+	DefaultPrefetchInterval = 10
 )
 
 type Config struct {
@@ -51,13 +70,55 @@ type Config struct {
 }
 
 func LoadConfig(configPath string) (*Config, error) {
-	var config Config
+	config := new(Config)
 	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(data, &config); err != nil {
+	if err := json.Unmarshal(data, config); err != nil {
 		return nil, err
 	}
-	return &config, nil
+	fillDefault(config)
+	return config, nil
+}
+
+func fillDefault(c *Config) error {
+	if c.ProxyType == "" {
+		return errors.New("missing proxy-type")
+	}
+	switch c.ProxyScope {
+	case "":
+		c.ProxyScope = ProxyScopeBypassCN
+	case ProxyScopeGlobal, ProxyScopeBypassCN:
+	default:
+		return errors.New("invalid proxy-scope " + c.ProxyScope)
+	}
+	if c.ProxyScope == "" {
+		c.ProxyScope = DefaultProxyScope
+	}
+	if c.LHost == "" {
+		c.LHost = DefaultLHost
+	}
+	if c.LPort == 0 {
+		c.LPort = DefaultLPort
+	}
+	if c.ProxyTimeout == 0 {
+		c.ProxyTimeout = DefaultProxyTimeout
+	}
+	if c.CNDNS == "" {
+		c.CNDNS = DefaultCNDNS
+	}
+	if c.FQDNS == "" {
+		c.FQDNS = DefaultFQDNS
+	}
+	if c.Mode == "" {
+		c.Mode = DefaultMode
+	}
+	if c.DNSPrefetchCount == 0 {
+		c.DNSPrefetchCount = DefaultPrefetchCount
+	}
+	if c.DNSPrefetchInterval == 0 {
+		c.DNSPrefetchInterval = DefaultPrefetchInterval
+	}
+	return nil
 }

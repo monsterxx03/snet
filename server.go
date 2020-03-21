@@ -84,5 +84,10 @@ func (s *Server) handle(conn *net.TCPConn) error {
 }
 
 func (s *Server) Shutdown() error {
-	return s.listener.Close()
+	err := s.listener.Close()
+	if err != nil {
+		return err
+	}
+	l.Info("tcp server shutdown")
+	return nil
 }
