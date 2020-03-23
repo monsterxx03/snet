@@ -149,15 +149,19 @@ If you use it on router, change `mode` to `router`, and listen-host should be yo
 
 ## For traffic from docker container
 
-Change `listen-host` to `0.0.0.0`, `mode` to `router`.
+Solution 1:
 
-Traffic from docker container's src ip is 172.17.0.1/16, it will go through `nat prerouting chain` -> `filter foward chain` -> `nat postrouting chain`, not `nat output chain`.
+- Change `listen-host` to `0.0.0.0`, `mode` to `router`.
+- Traffic from docker container's src ip is 172.17.0.1/16, it will go through `nat prerouting chain` -> `filter foward chain` -> `nat postrouting chain`, not `nat output chain`.
+- The main reason I need a `client mode` and `router mode` is handling DNS redirct, don't know how to make it work for `PREROUTING chain` and `OUTPUT chain` at the same time.
 
-The main reason I need a `client mode` and `router mode` is handling DNS redirct, don't know how to make it work for `PREROUTING chain` and `OUTPUT chain` at the same time.
+Solution 2:
+
+- Use host network: `docker run --network host ...`
 
 ## Hot reload
 
-If config.json is changed, use HUP signal to do reload.
+If config.json is changed, use HUP signal to reload.
 
     kill -HUP $(pgrep snet)
 
