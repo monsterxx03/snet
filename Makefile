@@ -5,7 +5,7 @@ LDFLAGS="-X main.sha1Ver=`git rev-parse HEAD` -X main.buildAt=`date -u +'%Y-%m-%
 build:
 	go build -ldflags $(LDFLAGS) -o bin/snet
 
-build_all: build_linux_amd64 build_darwin_amd64 build_mipsle_softfloat build_mipsle
+build_all: build_linux_amd64 build_darwin_amd64 build_mipsle_softfloat build_mipsle build_armv7
 
 build_linux_amd64:
 	GOOS=linux GOARCH=amd64  go build -ldflags $(LDFLAGS) -o bin/snet_linux_amd64
@@ -28,6 +28,9 @@ build_mipsle_softfloat:
 
 build_mipsle:
 	GOOS=linux GOARCH=mipsle go build -ldflags $(LDFLAGS) -o bin/snet_mipsle
+
+build_armv7:
+	GOOS=linux GOARCH=arm GOARM=7 go build -ldflags $(LDFLAGS) -o bin/snet_armv7
 
 deb:
 	cp config.json.example debain/etc/snet/config.json
