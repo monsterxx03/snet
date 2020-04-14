@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -208,12 +207,6 @@ func (s *DNS) isCNIP(ip net.IP) bool {
 }
 
 func (s *DNS) handle(reqUaddr *net.UDPAddr, data []byte) error {
-	defer func() {
-		if r := recover(); r != nil {
-			s.l.Error("Recoverd in dns handle:\n", string(debug.Stack()))
-			s.l.Info("error:", r, "data:", data)
-		}
-	}()
 
 	dnsQuery, err := s.parse(data)
 	if err != nil {

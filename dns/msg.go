@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"runtime/debug"
 	"strings"
 )
 
@@ -183,6 +184,12 @@ func (m *DNSMsg) CacheKey() string {
 }
 
 func NewDNSMsg(data []byte) (*DNSMsg, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recoverd in dns handle:\n", string(debug.Stack()))
+			fmt.Println("error:", r, "data:", data)
+		}
+	}()
 	if len(data) < 12 {
 		return nil, fmt.Errorf("invalid dns msg: %v", data)
 	}
