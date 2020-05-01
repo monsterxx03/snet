@@ -183,11 +183,16 @@ func (m *DNSMsg) CacheKey() string {
 	return fmt.Sprintf("%s:%d", m.QDomain, m.QType)
 }
 
-func NewDNSMsg(data []byte) (*DNSMsg, error) {
+func NewDNSMsg(data []byte) (msg *DNSMsg, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("Recoverd in dns handle:\n", string(debug.Stack()))
 			fmt.Println("error:", r, "data:", data)
+			var ok bool
+			err, ok = r.(error)
+			if !ok {
+				err = fmt.Errorf("dns msg parse error: %v", r)
+			}
 		}
 	}()
 	if len(data) < 12 {
@@ -297,5 +302,5 @@ func NewDNSMsg(data []byte) (*DNSMsg, error) {
 		qr:      qr,
 		QDomain: queryDomain,
 		QType:   RType(qtype), QClass: qclass,
-		ARecords: arecords}, nil
+		ARecords: arecords}, err
 }
