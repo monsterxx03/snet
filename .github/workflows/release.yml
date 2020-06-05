@@ -70,3 +70,12 @@ jobs:
         asset_path: ./bin/snet_mipsle_softfloat
         asset_name: snet_mipsle_softfloat
         asset_content_type: application/octet-stream
+    - name: Upload armv7 Release Asset
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/snet_armv7
+        asset_name: snet_armv7
+        asset_content_type: application/octet-stream
