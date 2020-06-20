@@ -2,6 +2,7 @@ package dns
 
 import (
 	"bufio"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -47,7 +48,7 @@ type DNS struct {
 	dnsLoggingFile       string
 	dnsLogger            *log.Logger
 	Cache                *cache.LRU
-	quit                 chan bool
+	ctx                  context.Context
 	l                    *logger.Logger
 }
 
@@ -60,7 +61,7 @@ const (
 	reasonFQNoCache = "fq-nocache"
 )
 
-func NewServer(c *config.Config, dnsPort int, chnroutes []string, l *logger.Logger) (*DNS, error) {
+func NewServer(ctx context.Context, c *config.Config, dnsPort int, chnroutes []string, l *logger.Logger) (*DNS, error) {
 	laddr := fmt.Sprintf("%s:%d", c.LHost, dnsPort)
 	uaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
@@ -129,7 +130,7 @@ func NewServer(c *config.Config, dnsPort int, chnroutes []string, l *logger.Logg
 		prefetchCount:        c.DNSPrefetchCount,
 		prefetchInterval:     c.DNSPrefetchInterval,
 		dnsLoggingFile:       c.DNSLoggingFile,
-		quit:                 make(chan bool),
+		ctx:                  ctx,
 		l:                    l,
 	}, nil
 }
@@ -174,7 +175,6 @@ func (s *DNS) Shutdown() error {
 		return err
 	}
 	s.l.Info("dns server shutdown")
-	s.quit <- true
 	return nil
 }
 
@@ -413,7 +413,7 @@ func (s *DNS) prefetchTicker() {
 	defer ticker.Stop()
 	for {
 		select {
-		case <-s.quit:
+		case <-s.ctx.Done():
 			s.l.Info("stop dns prefetch")
 			return
 		case <-ticker.C:

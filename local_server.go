@@ -68,7 +68,7 @@ func (s *LocalServer) DNSPort() int {
 }
 
 func (s *LocalServer) SetupDNServer(dnsCache *cache.LRU) error {
-	dns, err := dns.NewServer(s.cfg, s.DNSPort(), Chnroutes, l)
+	dns, err := dns.NewServer(s.ctx, s.cfg, s.DNSPort(), Chnroutes, l)
 	if err != nil {
 		return err
 	}
