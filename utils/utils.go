@@ -8,7 +8,6 @@ import (
 	"net"
 	exec "os/exec"
 	"strings"
-	"syscall"
 	"text/template"
 	"time"
 )
@@ -68,6 +67,7 @@ func Pipe(ctx context.Context, src, dst net.Conn, timeout time.Duration, rxBytes
 			return
 		}
 		buf := make([]byte, 1024)
+	COPY:
 		for {
 			n, err := r.Read(buf)
 			if direction == toLocal && rxBytesCh != nil {
@@ -76,27 +76,26 @@ func Pipe(ctx context.Context, src, dst net.Conn, timeout time.Duration, rxBytes
 			if err != nil && err != io.EOF {
 				// ignore idle timeout error
 				errCh <- err
-				break
+				break COPY
 			}
 			if n == 0 {
-				break
+				break COPY
 			}
 			if err := r.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 				errCh <- err
-				break
+				break COPY
 			}
 			n, err = w.Write(buf[:n])
 			if direction == toRemote && txBytesCh != nil {
 				txBytesCh <- uint64(n)
 			}
-			// ignore broken pipe error
-			if err != nil && !errors.Is(err, syscall.EPIPE) {
+			if err != nil {
 				errCh <- err
-				break
+				break COPY
 			}
 			if err := w.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
 				errCh <- err
-				break
+				break COPY
 			}
 		}
 		doneCh <- true

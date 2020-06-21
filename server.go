@@ -113,8 +113,7 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	// if intercept is enabled, use i to replace conn
 	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
 	defer remoteConn.Close()
-	err = utils.Pipe(s.ctx, conn, remoteConn, s.timeout, s.rxBytesCh, s.txBytesCh)
-	if err != nil {
+	if err := utils.Pipe(s.ctx, conn, remoteConn, s.timeout, s.rxBytesCh, s.txBytesCh); err != nil {
 		l.Error(err)
 	}
 	return nil
