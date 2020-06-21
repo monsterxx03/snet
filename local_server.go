@@ -124,11 +124,10 @@ func (s *LocalServer) refreshTrafficRate() {
 	for {
 		select {
 		case <-ticker:
-			s.stats.RecordRx(s.server.RxBytesTotal)
-			s.stats.RecordTx(s.server.TxBytesTotal)
-			l.Info("rx:", s.stats.RxRate2(), "tx:", s.stats.TxRate2())
+			s.stats.Record(s.server.HostRxBytesTotal, s.server.HostTxBytesTotal)
+			s.stats.Print()
 		case <-s.ctx.Done():
-			l.Info("quit traffic stats goroutine")
+			l.Info("quit traffic stats refresh goroutine")
 			return
 		}
 	}

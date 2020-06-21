@@ -10,6 +10,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"snet/stats"
 )
 
 func Sh(cmds ...string) (result string, err error) {
@@ -51,12 +53,13 @@ func NamedFmt(msg string, args map[string]interface{}) (string, error) {
 	return result.String(), nil
 }
 
-func Pipe(ctx context.Context, src, dst net.Conn, timeout time.Duration, rxBytesCh chan uint64, txBytesCh chan uint64) error {
+func Pipe(ctx context.Context, src, remote net.Conn, timeout time.Duration, rxCh, txCh chan *stats.P, dstHost string) error {
 	count := 2
 	doneCh := make(chan bool, count)
 	errCh := make(chan error, count)
 	const toRemote = 1
 	const toLocal = 0
+	p := &stats.P{Host: dstHost}
 	cp := func(r, w net.Conn, direction int) {
 		if err := r.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 			errCh <- err
@@ -70,8 +73,9 @@ func Pipe(ctx context.Context, src, dst net.Conn, timeout time.Duration, rxBytes
 	COPY:
 		for {
 			n, err := r.Read(buf)
-			if direction == toLocal && rxBytesCh != nil {
-				rxBytesCh <- uint64(n)
+			if direction == toLocal && rxCh != nil {
+				p.Rx = uint64(n)
+				rxCh <- p
 			}
 			if err != nil && err != io.EOF {
 				// ignore idle timeout error
@@ -86,8 +90,9 @@ func Pipe(ctx context.Context, src, dst net.Conn, timeout time.Duration, rxBytes
 				break COPY
 			}
 			n, err = w.Write(buf[:n])
-			if direction == toRemote && txBytesCh != nil {
-				txBytesCh <- uint64(n)
+			if direction == toRemote && txCh != nil {
+				p.Tx = uint64(n)
+				txCh <- p
 			}
 			if err != nil {
 				errCh <- err
@@ -100,8 +105,8 @@ func Pipe(ctx context.Context, src, dst net.Conn, timeout time.Duration, rxBytes
 		}
 		doneCh <- true
 	}
-	go cp(src, dst, toRemote)
-	go cp(dst, src, toLocal)
+	go cp(src, remote, toRemote)
+	go cp(remote, src, toLocal)
 	errs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
 		select {

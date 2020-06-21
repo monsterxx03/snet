@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"sync/atomic"
 	"time"
 
 	"snet/config"
 	"snet/proxy"
 	"snet/redirector"
+	"snet/stats"
 	"snet/utils"
 )
 
@@ -25,10 +25,10 @@ type Server struct {
 	timeout  time.Duration
 
 	// Total number from start
-	RxBytesTotal uint64
-	TxBytesTotal uint64
-	rxBytesCh    chan uint64
-	txBytesCh    chan uint64
+	HostRxBytesTotal map[string]uint64
+	HostTxBytesTotal map[string]uint64
+	rxCh             chan *stats.P
+	txCh             chan *stats.P
 }
 
 func NewServer(ctx context.Context, c *config.Config) (*Server, error) {
@@ -52,19 +52,21 @@ func NewServer(ctx context.Context, c *config.Config) (*Server, error) {
 	if err := p.Init(cfg); err != nil {
 		return nil, err
 	}
-	var rxBytesCh, txBytesCh chan uint64
+	var rxCh, txCh chan *stats.P
 	if c.EnableStat {
-		rxBytesCh = make(chan uint64, 1)
-		txBytesCh = make(chan uint64, 1)
+		rxCh = make(chan *stats.P, 1)
+		txCh = make(chan *stats.P, 1)
 	}
 	return &Server{
-		ctx:       ctx,
-		cfg:       c,
-		listener:  ln.(*net.TCPListener),
-		proxy:     p,
-		timeout:   time.Duration(c.ProxyTimeout) * time.Second,
-		rxBytesCh: rxBytesCh,
-		txBytesCh: txBytesCh,
+		ctx:              ctx,
+		cfg:              c,
+		listener:         ln.(*net.TCPListener),
+		proxy:            p,
+		timeout:          time.Duration(c.ProxyTimeout) * time.Second,
+		HostRxBytesTotal: make(map[string]uint64),
+		HostTxBytesTotal: make(map[string]uint64),
+		rxCh:             rxCh,
+		txCh:             txCh,
 	}, nil
 }
 
@@ -89,10 +91,18 @@ func (s *Server) Run() error {
 func (s *Server) receiveStat() {
 	for {
 		select {
-		case n := <-s.rxBytesCh:
-			atomic.AddUint64(&s.RxBytesTotal, uint64(n))
-		case n := <-s.txBytesCh:
-			atomic.AddUint64(&s.TxBytesTotal, uint64(n))
+		case p := <-s.rxCh:
+			if _, ok := s.HostRxBytesTotal[p.Host]; ok {
+				s.HostRxBytesTotal[p.Host] += p.Rx
+			} else {
+				s.HostRxBytesTotal[p.Host] = p.Rx
+			}
+		case p := <-s.txCh:
+			if _, ok := s.HostTxBytesTotal[p.Host]; ok {
+				s.HostTxBytesTotal[p.Host] += p.Tx
+			} else {
+				s.HostTxBytesTotal[p.Host] = p.Tx
+			}
 		case <-s.ctx.Done():
 			return
 		}
@@ -113,7 +123,8 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	// if intercept is enabled, use i to replace conn
 	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
 	defer remoteConn.Close()
-	if err := utils.Pipe(s.ctx, conn, remoteConn, s.timeout, s.rxBytesCh, s.txBytesCh); err != nil {
+	// TODO do intercept to figure out tls/http server_name
+	if err := utils.Pipe(s.ctx, conn, remoteConn, s.timeout, s.rxCh, s.txCh, fmt.Sprintf("%s:%d", dstHost, dstPort)); err != nil {
 		l.Error(err)
 	}
 	return nil

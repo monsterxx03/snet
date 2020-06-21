@@ -72,7 +72,7 @@ func runTLSServer(c *config.Config) {
 				return
 			}
 			defer dstConn.Close()
-			if err := utils.Pipe(context.Background(), conn, dstConn, time.Duration(30)*time.Second, nil, nil); err != nil {
+			if err := utils.Pipe(context.Background(), conn, dstConn, time.Duration(30)*time.Second, nil, nil, ""); err != nil {
 				l.Error(err)
 			}
 		}(conn)
