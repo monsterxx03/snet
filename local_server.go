@@ -94,7 +94,7 @@ func (s *LocalServer) Shutdown() {
 func (s *LocalServer) Run(dnsCache *cache.LRU) {
 	var err error
 	s.quit = false
-	s.server, err = NewServer(s.cfg)
+	s.server, err = NewServer(s.ctx, s.cfg)
 	exitOnError(err, nil)
 	exitOnError(s.SetupDNServer(dnsCache), nil)
 	exitOnError(s.SetupRedirector(), nil)

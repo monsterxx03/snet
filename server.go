@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -16,13 +17,14 @@ const (
 )
 
 type Server struct {
+	ctx      context.Context
 	cfg      *config.Config
 	listener *net.TCPListener
 	proxy    proxy.Proxy
 	timeout  time.Duration
 }
 
-func NewServer(c *config.Config) (*Server, error) {
+func NewServer(ctx context.Context, c *config.Config) (*Server, error) {
 	addr := fmt.Sprintf("%s:%d", c.LHost, c.LPort)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -44,6 +46,7 @@ func NewServer(c *config.Config) (*Server, error) {
 		return nil, err
 	}
 	return &Server{
+		ctx:      ctx,
 		cfg:      c,
 		listener: ln.(*net.TCPListener),
 		proxy:    p,
@@ -79,7 +82,7 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	// if intercept is enabled, use i to replace conn
 	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
 	defer remoteConn.Close()
-	if err := utils.Pipe(conn, remoteConn, s.timeout); err != nil {
+	if err := utils.Pipe(s.ctx, conn, remoteConn, s.timeout); err != nil {
 		l.Error(err)
 	}
 	return nil

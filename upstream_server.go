@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
@@ -71,7 +72,7 @@ func runTLSServer(c *config.Config) {
 				return
 			}
 			defer dstConn.Close()
-			if err := utils.Pipe(conn, dstConn, time.Duration(30)*time.Second); err != nil {
+			if err := utils.Pipe(context.Background(), conn, dstConn, time.Duration(30)*time.Second); err != nil {
 				l.Error(err)
 			}
 		}(conn)

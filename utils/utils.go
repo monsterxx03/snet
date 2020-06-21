@@ -2,12 +2,12 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net"
 	exec "os/exec"
 	"strings"
-	"syscall"
 	"text/template"
 	"time"
 )
@@ -51,7 +51,7 @@ func NamedFmt(msg string, args map[string]interface{}) (string, error) {
 	return result.String(), nil
 }
 
-func Pipe(src, dst net.Conn, timeout time.Duration) error {
+func Pipe(ctx context.Context, src, dst net.Conn, timeout time.Duration) error {
 	count := 2
 	doneCh := make(chan bool, count)
 	errCh := make(chan error, count)
@@ -65,29 +65,34 @@ func Pipe(src, dst net.Conn, timeout time.Duration) error {
 			return
 		}
 		buf := make([]byte, 1024)
+	COPY:
 		for {
-			n, err := r.Read(buf)
-			if err != nil && err != io.EOF {
-				// ignore idle timeout error
-				errCh <- err
-				break
-			}
-			if n == 0 {
-				break
-			}
-			if err := r.SetReadDeadline(time.Now().Add(timeout)); err != nil {
-				errCh <- err
-				break
-			}
-			_, err = w.Write(buf[:n])
-			// ignore broken pipe error
-			if err != nil && !errors.Is(err, syscall.EPIPE) {
-				errCh <- err
-				break
-			}
-			if err := w.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
-				errCh <- err
-				break
+			select {
+			case <-ctx.Done():
+				break COPY
+			default:
+				n, err := r.Read(buf)
+				if err != nil && err != io.EOF {
+					// ignore idle timeout error
+					errCh <- err
+					break COPY
+				}
+				if n == 0 {
+					break COPY
+				}
+				if err := r.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+					errCh <- err
+					break COPY
+				}
+				_, err = w.Write(buf[:n])
+				if err != nil {
+					errCh <- err
+					break COPY
+				}
+				if err := w.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
+					errCh <- err
+					break COPY
+				}
 			}
 		}
 		doneCh <- true
