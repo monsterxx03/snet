@@ -52,14 +52,19 @@ func NewServer(ctx context.Context, c *config.Config) (*Server, error) {
 	if err := p.Init(cfg); err != nil {
 		return nil, err
 	}
+	var rxBytesCh, txBytesCh chan uint64
+	if c.EnableStat {
+		rxBytesCh = make(chan uint64, 1)
+		txBytesCh = make(chan uint64, 1)
+	}
 	return &Server{
 		ctx:       ctx,
 		cfg:       c,
 		listener:  ln.(*net.TCPListener),
 		proxy:     p,
 		timeout:   time.Duration(c.ProxyTimeout) * time.Second,
-		rxBytesCh: make(chan uint64),
-		txBytesCh: make(chan uint64),
+		rxBytesCh: rxBytesCh,
+		txBytesCh: txBytesCh,
 	}, nil
 }
 
@@ -108,7 +113,7 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	// if intercept is enabled, use i to replace conn
 	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
 	defer remoteConn.Close()
-	err = utils.Pipe(conn, remoteConn, s.timeout, s.cfg.EnableStat, s.rxBytesCh, s.txBytesCh)
+	err = utils.Pipe(s.ctx, conn, remoteConn, s.timeout, s.rxBytesCh, s.txBytesCh)
 	if err != nil {
 		l.Error(err)
 	}

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -51,7 +52,7 @@ func NamedFmt(msg string, args map[string]interface{}) (string, error) {
 	return result.String(), nil
 }
 
-func Pipe(src, dst net.Conn, timeout time.Duration, enableStat bool, rxBytesCh chan uint64, txBytesCh chan uint64) error {
+func Pipe(ctx context.Context, src, dst net.Conn, timeout time.Duration, rxBytesCh chan uint64, txBytesCh chan uint64) error {
 	count := 2
 	doneCh := make(chan bool, count)
 	errCh := make(chan error, count)
@@ -69,7 +70,7 @@ func Pipe(src, dst net.Conn, timeout time.Duration, enableStat bool, rxBytesCh c
 		buf := make([]byte, 1024)
 		for {
 			n, err := r.Read(buf)
-			if direction == toLocal && enableStat {
+			if direction == toLocal && rxBytesCh != nil {
 				rxBytesCh <- uint64(n)
 			}
 			if err != nil && err != io.EOF {
@@ -85,7 +86,7 @@ func Pipe(src, dst net.Conn, timeout time.Duration, enableStat bool, rxBytesCh c
 				break
 			}
 			n, err = w.Write(buf[:n])
-			if direction == toRemote && enableStat {
+			if direction == toRemote && txBytesCh != nil {
 				txBytesCh <- uint64(n)
 			}
 			// ignore broken pipe error
