@@ -72,35 +72,40 @@ func Pipe(ctx context.Context, src, remote net.Conn, timeout time.Duration, rxCh
 		buf := make([]byte, 1024)
 	COPY:
 		for {
-			n, err := r.Read(buf)
-			if direction == toLocal && rxCh != nil {
-				p.Rx = uint64(n)
-				rxCh <- p
-			}
-			if err != nil && err != io.EOF {
-				// ignore idle timeout error
-				errCh <- err
+			select {
+			case <-ctx.Done():
 				break COPY
-			}
-			if n == 0 {
-				break COPY
-			}
-			if err := r.SetReadDeadline(time.Now().Add(timeout)); err != nil {
-				errCh <- err
-				break COPY
-			}
-			n, err = w.Write(buf[:n])
-			if direction == toRemote && txCh != nil {
-				p.Tx = uint64(n)
-				txCh <- p
-			}
-			if err != nil {
-				errCh <- err
-				break COPY
-			}
-			if err := w.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
-				errCh <- err
-				break COPY
+			default:
+				n, err := r.Read(buf)
+				if direction == toLocal && rxCh != nil {
+					p.Rx = uint64(n)
+					rxCh <- p
+				}
+				if err != nil && err != io.EOF {
+					// ignore idle timeout error
+					errCh <- err
+					break COPY
+				}
+				if n == 0 {
+					break COPY
+				}
+				if err := r.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+					errCh <- err
+					break COPY
+				}
+				n, err = w.Write(buf[:n])
+				if direction == toRemote && txCh != nil {
+					p.Tx = uint64(n)
+					txCh <- p
+				}
+				if err != nil {
+					errCh <- err
+					break COPY
+				}
+				if err := w.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
+					errCh <- err
+					break COPY
+				}
 			}
 		}
 		doneCh <- true

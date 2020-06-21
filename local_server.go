@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 
@@ -114,6 +116,13 @@ func (s *LocalServer) Run(dnsCache *cache.LRU) {
 	go s.server.Run()
 	if s.cfg.EnableStat {
 		go s.refreshTrafficRate()
+		http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(s.stats.ToJson())
+		})
+		addr := fmt.Sprintf("%s:%d", s.cfg.LHost, s.cfg.StatPort)
+		l.Infof("Api server listen on http://%s", addr)
+		go http.ListenAndServe(addr, nil)
 	}
 	<-s.ctx.Done()
 	s.Shutdown()

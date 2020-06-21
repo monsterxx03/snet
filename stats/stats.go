@@ -2,6 +2,7 @@ package stats
 
 import (
 	"container/ring"
+	"encoding/json"
 	"fmt"
 )
 
@@ -52,26 +53,28 @@ func (s *HostStats) RecordTx(tx uint64) {
 	s.txRing = s.txRing.Next()
 }
 
-func (s *HostStats) RxRate2() float64 {
+func (s *HostStats) RxRate2() string {
 	if s.rxRing.Move(-2).Value != nil {
 		valPrev := s.rxRing.Move(-2).Value.(uint64)
 		valCur := s.rxRing.Move(-1).Value.(uint64)
-		return float64(valCur-valPrev) / 2
+		return fmt.Sprintf("%.2f", float64(valCur-valPrev)/RATE_INTERVAL)
 	}
-	return 0
+	return "0"
 }
 
-func (s *HostStats) TxRate2() float64 {
+func (s *HostStats) TxRate2() string {
 	if s.txRing.Move(-2).Value != nil {
 		valPrev := s.txRing.Move(-2).Value.(uint64)
 		valCur := s.txRing.Move(-1).Value.(uint64)
-		return float64(valCur-valPrev) / 2
+		return fmt.Sprintf("%.2f", float64(valCur-valPrev)/RATE_INTERVAL)
 	}
-	return 0
+	return "0"
 }
 
 type Stats struct {
-	hosts map[string]*HostStats
+	rxBytes uint64
+	txBytes uint64
+	hosts   map[string]*HostStats
 }
 
 func NewStats() *Stats {
@@ -80,7 +83,9 @@ func NewStats() *Stats {
 
 // should be called once every second
 func (s *Stats) Record(rxMap, txMap map[string]uint64) {
+	var rxBytes, txBytes uint64 = 0, 0
 	for host, val := range rxMap {
+		rxBytes += val
 		if _p, ok := s.hosts[host]; ok {
 			_p.RecordRx(val)
 		} else {
@@ -89,8 +94,10 @@ func (s *Stats) Record(rxMap, txMap map[string]uint64) {
 			s.hosts[host] = _p
 		}
 	}
+	s.rxBytes = rxBytes
 
 	for host, val := range txMap {
+		txBytes += val
 		if _p, ok := s.hosts[host]; ok {
 			_p.RecordTx(val)
 		} else {
@@ -99,13 +106,33 @@ func (s *Stats) Record(rxMap, txMap map[string]uint64) {
 			s.hosts[host] = _p
 		}
 	}
+	s.txBytes = txBytes
+}
+
+func (s *Stats) ToJson() []byte {
+	result := new(StatsApiModel)
+	result.Total = total{RxSize: fmt.Sprintf("%d", s.rxBytes), TxSize: fmt.Sprintf("%d", s.txBytes)}
+	result.Hosts = make([]*host, 0, len(s.hosts))
+	for h, p := range s.hosts {
+		result.Hosts = append(result.Hosts, &host{Host: h,
+			RxRate: p.RxRate2(), TxRate: p.TxRate2(),
+			RxSize: p.RxTotal(), TxSize: p.TxTotal(),
+		})
+	}
+	res, err := json.Marshal(result)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return res
 }
 
 func (s *Stats) Print() {
 	for h, p := range s.hosts {
-		fmt.Printf("%s,rx/s: %f,tx/s: %f, rx: %d, tx: %d\n", h, p.RxRate2(), p.TxRate2(), p.RxTotal(), p.TxTotal())
+		fmt.Printf("%s,rx/s: %s,tx/s: %s, rx: %d, tx: %d\n", h, p.RxRate2(), p.TxRate2(), p.RxTotal(), p.TxTotal())
 	}
-	fmt.Println()
+	if len(s.hosts) > 0 {
+		fmt.Println()
+	}
 }
 
 type P struct {

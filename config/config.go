@@ -22,6 +22,7 @@ const (
 	DefaultMode             = "local"
 	DefaultPrefetchCount    = 10
 	DefaultPrefetchInterval = 10
+	DefaultStatPort         = 8810
 )
 
 type Config struct {
@@ -63,6 +64,7 @@ type Config struct {
 	BlockHosts              []string          `json:"block-hosts"`
 	Mode                    string            `json:"mode"`
 	EnableStat              bool              `json:"enable-stat"`
+	StatPort                int               `json:"stat-port"`
 	UpstreamType            string            `json:"upstream-type"`
 	UpstreamTLSServerListen string            `json:"upstream-tls-server-listen"`
 	UpstreamTLSKey          string            `json:"upstream-tls-key"`
@@ -120,6 +122,9 @@ func fillDefault(c *Config) error {
 	}
 	if c.DNSPrefetchInterval == 0 {
 		c.DNSPrefetchInterval = DefaultPrefetchInterval
+	}
+	if c.StatPort == 0 {
+		c.StatPort = DefaultStatPort
 	}
 	return nil
 }
