@@ -64,7 +64,7 @@ func main() {
 		ctx, cancel := context.WithCancel(context.Background())
 		s := NewLocalServer(ctx, c)
 		if *clean {
-			s.server, err = NewServer(c)
+			s.server, err = NewServer(ctx, c)
 			exitOnError(err, nil)
 			s.SetupRedirector()
 			s.Clean()

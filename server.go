@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"snet/config"
@@ -16,13 +18,20 @@ const (
 )
 
 type Server struct {
+	ctx      context.Context
 	cfg      *config.Config
 	listener *net.TCPListener
 	proxy    proxy.Proxy
 	timeout  time.Duration
+
+	// Total number from start
+	RxBytesTotal uint64
+	TxBytesTotal uint64
+	rxBytesCh    chan uint64
+	txBytesCh    chan uint64
 }
 
-func NewServer(c *config.Config) (*Server, error) {
+func NewServer(ctx context.Context, c *config.Config) (*Server, error) {
 	addr := fmt.Sprintf("%s:%d", c.LHost, c.LPort)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -44,15 +53,21 @@ func NewServer(c *config.Config) (*Server, error) {
 		return nil, err
 	}
 	return &Server{
-		cfg:      c,
-		listener: ln.(*net.TCPListener),
-		proxy:    p,
-		timeout:  time.Duration(c.ProxyTimeout) * time.Second,
+		ctx:       ctx,
+		cfg:       c,
+		listener:  ln.(*net.TCPListener),
+		proxy:     p,
+		timeout:   time.Duration(c.ProxyTimeout) * time.Second,
+		rxBytesCh: make(chan uint64),
+		txBytesCh: make(chan uint64),
 	}, nil
 }
 
 func (s *Server) Run() error {
 	l.Infof("Proxy server listen on tcp %s:%d", s.cfg.LHost, s.cfg.LPort)
+	if s.cfg.EnableStat {
+		go s.receiveStat()
+	}
 	for {
 		conn, err := s.listener.AcceptTCP()
 		if err != nil {
@@ -64,6 +79,20 @@ func (s *Server) Run() error {
 			}
 		}(conn)
 	}
+}
+
+func (s *Server) receiveStat() {
+	for {
+		select {
+		case n := <-s.rxBytesCh:
+			atomic.AddUint64(&s.RxBytesTotal, uint64(n))
+		case n := <-s.txBytesCh:
+			atomic.AddUint64(&s.TxBytesTotal, uint64(n))
+		case <-s.ctx.Done():
+			return
+		}
+	}
+
 }
 
 func (s *Server) handle(conn *net.TCPConn) error {
@@ -79,7 +108,8 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	// if intercept is enabled, use i to replace conn
 	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
 	defer remoteConn.Close()
-	if err := utils.Pipe(conn, remoteConn, s.timeout); err != nil {
+	err = utils.Pipe(conn, remoteConn, s.timeout, s.cfg.EnableStat, s.rxBytesCh, s.txBytesCh)
+	if err != nil {
 		l.Error(err)
 	}
 	return nil

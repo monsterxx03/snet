@@ -51,11 +51,13 @@ func NamedFmt(msg string, args map[string]interface{}) (string, error) {
 	return result.String(), nil
 }
 
-func Pipe(src, dst net.Conn, timeout time.Duration) error {
+func Pipe(src, dst net.Conn, timeout time.Duration, enableStat bool, rxBytesCh chan uint64, txBytesCh chan uint64) error {
 	count := 2
 	doneCh := make(chan bool, count)
 	errCh := make(chan error, count)
-	cp := func(r, w net.Conn) {
+	const toRemote = 1
+	const toLocal = 0
+	cp := func(r, w net.Conn, direction int) {
 		if err := r.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 			errCh <- err
 			return
@@ -67,6 +69,9 @@ func Pipe(src, dst net.Conn, timeout time.Duration) error {
 		buf := make([]byte, 1024)
 		for {
 			n, err := r.Read(buf)
+			if direction == toLocal && enableStat {
+				rxBytesCh <- uint64(n)
+			}
 			if err != nil && err != io.EOF {
 				// ignore idle timeout error
 				errCh <- err
@@ -79,7 +84,10 @@ func Pipe(src, dst net.Conn, timeout time.Duration) error {
 				errCh <- err
 				break
 			}
-			_, err = w.Write(buf[:n])
+			n, err = w.Write(buf[:n])
+			if direction == toRemote && enableStat {
+				txBytesCh <- uint64(n)
+			}
 			// ignore broken pipe error
 			if err != nil && !errors.Is(err, syscall.EPIPE) {
 				errCh <- err
@@ -92,8 +100,8 @@ func Pipe(src, dst net.Conn, timeout time.Duration) error {
 		}
 		doneCh <- true
 	}
-	go cp(src, dst)
-	go cp(dst, src)
+	go cp(src, dst, toRemote)
+	go cp(dst, src, toLocal)
 	errs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
 		select {

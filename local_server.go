@@ -4,11 +4,13 @@ import (
 	"context"
 	"net"
 	"sync"
+	"time"
 
 	"snet/cache"
 	"snet/config"
 	"snet/dns"
 	"snet/redirector"
+	"snet/stats"
 )
 
 type LocalServer struct {
@@ -17,6 +19,7 @@ type LocalServer struct {
 	redir    redirector.Redirector
 	dnServer *dns.DNS
 	server   *Server
+	stats    *stats.Stats
 	quit     bool
 	qlock    sync.Mutex
 	ctx      context.Context
@@ -94,7 +97,7 @@ func (s *LocalServer) Shutdown() {
 func (s *LocalServer) Run(dnsCache *cache.LRU) {
 	var err error
 	s.quit = false
-	s.server, err = NewServer(s.cfg)
+	s.server, err = NewServer(s.ctx, s.cfg)
 	exitOnError(err, nil)
 	exitOnError(s.SetupDNServer(dnsCache), nil)
 	exitOnError(s.SetupRedirector(), nil)
@@ -109,10 +112,28 @@ func (s *LocalServer) Run(dnsCache *cache.LRU) {
 
 	go s.dnServer.Run()
 	go s.server.Run()
+	if s.cfg.EnableStat {
+		go s.refreshTrafficRate()
+	}
 	<-s.ctx.Done()
 	s.Shutdown()
 }
 
+func (s *LocalServer) refreshTrafficRate() {
+	ticker := time.Tick(1 * time.Second)
+	for {
+		select {
+		case <-ticker:
+			s.stats.RecordRx(s.server.RxBytesTotal)
+			s.stats.RecordTx(s.server.TxBytesTotal)
+			l.Info("rx:", s.stats.RxRate2(), "tx:", s.stats.TxRate2())
+		case <-s.ctx.Done():
+			l.Info("quit traffic stats goroutine")
+			return
+		}
+	}
+}
+
 func NewLocalServer(ctx context.Context, c *config.Config) *LocalServer {
-	return &LocalServer{cfg: c, cfgChan: make(chan *config.Config), ctx: ctx}
+	return &LocalServer{cfg: c, cfgChan: make(chan *config.Config), ctx: ctx, stats: stats.NewStats()}
 }
