@@ -86,7 +86,6 @@ func Pipe(ctx context.Context, src, dst net.Conn, timeout time.Duration) error {
 				}
 				_, err = w.Write(buf[:n])
 				if err != nil {
-					errCh <- err
 					break COPY
 				}
 				if err := w.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
