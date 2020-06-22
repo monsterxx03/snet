@@ -99,7 +99,6 @@ func Pipe(ctx context.Context, src, remote net.Conn, timeout time.Duration, rxCh
 					txCh <- p
 				}
 				if err != nil {
-					errCh <- err
 					break COPY
 				}
 				if err := w.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
