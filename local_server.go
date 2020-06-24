@@ -52,7 +52,7 @@ func (s *LocalServer) SetupRedirector() error {
 		}
 	}
 
-	s.redir, err = redirector.NewRedirector(bypassCidrs, s.cfg.BypassSrcIPs, l)
+	s.redir, err = redirector.NewRedirector(bypassCidrs, s.cfg.BypassSrcIPs, s.cfg.ActiveEni, l)
 	exitOnError(err, nil)
 	proxyIP := s.server.proxy.GetProxyIP()
 	if err := s.redir.Init(); err != nil {

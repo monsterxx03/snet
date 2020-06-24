@@ -45,11 +45,34 @@ func (t *PFTable) CIDRS() string {
 
 type PacketFilter struct {
 	bypassTable *PFTable
+	eni         string
 	l           *logger.Logger
 }
 
 func (pf *PacketFilter) Init() error {
 	return nil
+}
+
+func findActiveInterface(l *logger.Logger) string {
+	result, err := utils.Sh("route", "get", "114.114.114.114")
+	if err != nil {
+		l.Errorf("failed to get active network interface, out: %s, err: %s", result, err)
+		return "en0"
+	}
+	eni := ""
+	for _, line := range strings.Split(result, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "interface") {
+			r := strings.Split(line, " ")
+			eni = r[1]
+		}
+	}
+	if eni == "" {
+		l.Error("failed to get active network interface, out:", result)
+		return "en0"
+	} else {
+		return eni
+	}
 }
 
 func (pf *PacketFilter) SetupRules(mode string, snetHost string, snetPort int, dnsPort int, cnDNS string) error {
@@ -60,7 +83,7 @@ func (pf *PacketFilter) SetupRules(mode string, snetHost string, snetPort int, d
 echo '
 table <{{ .bypassTable.Name }}> { {{ .bypassTable.CIDRS }} }
 lo="lo0"
-dev="en0"
+dev="{{ .eni }}"
 rdr on $lo proto tcp from $dev to any port 1:65535 -> {{.snetHost }} port {{ .snetPort }}  # let proxy handle tcp 
 rdr on $lo proto udp from $dev to any port 53 -> {{ .snetHost }} port {{ .dnsPort }}  # let proxy handle dns query
 pass out on $dev route-to $lo proto tcp from $dev to any port 1:65535  # re-route outgoing tcp
@@ -69,13 +92,13 @@ pass out proto udp from any to {{ .cnDNS }} # skip cn dns
 pass out proto tcp from any to <{{ .bypassTable.Name}}>  # skip cn ip + upstream proxy ip
 ' | sudo pfctl -ef -
 `, map[string]interface{}{"bypassTable": pf.bypassTable, "snetHost": snetHost,
-		"snetPort": snetPort, "cnDNS": cnDNS, "dnsPort": dnsPort})
+		"snetPort": snetPort, "cnDNS": cnDNS, "dnsPort": dnsPort, "eni": pf.eni})
 	if err != nil {
 		pf.l.Error(err)
 		return err
 	}
-	if _, err := utils.Sh(cmd); err != nil {
-		pf.l.Error(err)
+	if out, err := utils.Sh(cmd); err != nil {
+		pf.l.Error("output:", out, "err:", err)
 		return err
 	}
 	return nil
@@ -97,14 +120,18 @@ func (pf *PacketFilter) ByPass(ip string) error {
 	return nil
 }
 
-func NewRedirector(byPassRoutes []string, byPassSrcIPs []string, l *logger.Logger) (Redirector, error) {
+func NewRedirector(byPassRoutes []string, byPassSrcIPs []string, eni string, l *logger.Logger) (Redirector, error) {
 	// byPassSrcIPs is useless on mac, since it only works on router mode
 	if _, err := utils.Sh("which pfctl"); err != nil {
 		return nil, err
 	}
+	if eni == "" {
+		eni = findActiveInterface(l)
+	}
+	l.Info("using interface ", eni)
 	bypass := append(byPassRoutes, whitelistCIDR...)
 	pfTable := &PFTable{Name: tableName, bypassCidrs: bypass}
-	return &PacketFilter{pfTable, l}, nil
+	return &PacketFilter{pfTable, eni, l}, nil
 }
 
 func ioctl(fd uintptr, cmd uintptr, ptr unsafe.Pointer) error {

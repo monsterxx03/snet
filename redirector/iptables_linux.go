@@ -190,7 +190,7 @@ func GetDstAddr(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
 	return host, int(addr.Multiaddr[2])<<8 + int(addr.Multiaddr[3]), err
 }
 
-func NewRedirector(byPassRoutes []string, byPassSrcIPs []string, l *logger.Logger) (Redirector, error) {
+func NewRedirector(byPassRoutes []string, byPassSrcIPs []string, eni string, l *logger.Logger) (Redirector, error) {
 
 	if _, err := utils.Sh("which ipset"); err != nil {
 		return nil, errors.New("ipset not found")

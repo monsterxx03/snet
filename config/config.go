@@ -65,6 +65,7 @@ type Config struct {
 	Mode                    string            `json:"mode"`
 	EnableStat              bool              `json:"enable-stat"`
 	StatPort                int               `json:"stat-port"`
+	ActiveEni               string            `json:"active-eni"`
 	UpstreamType            string            `json:"upstream-type"`
 	UpstreamTLSServerListen string            `json:"upstream-tls-server-listen"`
 	UpstreamTLSKey          string            `json:"upstream-tls-key"`

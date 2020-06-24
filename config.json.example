@@ -41,6 +41,7 @@
     "enable-stat": false,
     "stat-port": 8810,
     "stat-intercept-server-name": false,
+    "active-eni": "en0",
 
     "upstream-type": "tls",
     "upstream-tls-server-listen": "0.0.0.0:9999",

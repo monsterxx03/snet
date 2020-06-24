@@ -172,6 +172,8 @@ During hot reload:
 
 ## Notice
 
+### If crash
+
 If crash or force killed(kill -9), snet will have no chance to cleanup iptables/pf rules, it will make you have no internet access.
 
 You need to clean them manually(If restart snet, it will try to cleanup) or restart your laptop :(
@@ -184,6 +186,10 @@ Linux:
 MacOS:
 
     sudo pfctl -d
+
+### Mac multi network interface
+
+snet will try to find active network interface current using on starting, you can use `active-eni` option (eg: en4) to override it.
 
 ## Known issue:
 
