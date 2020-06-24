@@ -37,7 +37,8 @@
     "host-map": {},
     "block-host-file": "",
     "block-hosts": ["*.hpplay.cn"],
-    "mode": "local"
+    "mode": "local",
+    "active-eni": "en0",
 
     "upstream-type": "tls",
     "upstream-tls-server-listen": "0.0.0.0:9999",

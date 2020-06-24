@@ -62,6 +62,7 @@ type Config struct {
 	BlockHostFile           string            `json:"block-host-file"`
 	BlockHosts              []string          `json:"block-hosts"`
 	Mode                    string            `json:"mode"`
+	ActiveEni               string            `json:"active-eni"`
 	UpstreamType            string            `json:"upstream-type"`
 	UpstreamTLSServerListen string            `json:"upstream-tls-server-listen"`
 	UpstreamTLSKey          string            `json:"upstream-tls-key"`
