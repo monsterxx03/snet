@@ -1,14 +1,14 @@
 package stats
 
 type total struct {
-	RxSize string
-	TxSize string
+	RxSize uint64
+	TxSize uint64
 }
 
 type host struct {
 	Host   string
-	RxRate string
-	TxRate string
+	RxRate float64
+	TxRate float64
 	RxSize uint64
 	TxSize uint64
 }

@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"syscall"
-
 	"snet/config"
 	"snet/logger"
+	"syscall"
 )
 
 //go:generate go run chnroutes_generate.go
@@ -24,10 +23,13 @@ var (
 	buildAt string
 )
 
+var defaultApiServer = "http://localhost:8810"
+
 var configFile = flag.String("config", "", "json config file path, only used when working as client")
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 var version = flag.Bool("version", false, "print version only")
 var verbose = flag.Bool("v", false, "verbose output")
+var top = flag.Bool("top", false,  "show metrics in terminal")
 var l *logger.Logger
 
 func main() {
@@ -37,6 +39,11 @@ func main() {
 		fmt.Printf("Git: %s\n", sha1Ver)
 		fmt.Printf("Build at: %s\n", buildAt)
 		fmt.Printf("Chnroutes updated at: %s\n", ChnroutesTS)
+		os.Exit(0)
+	}
+
+	if *top {
+		showTop()
 		os.Exit(0)
 	}
 
@@ -100,4 +107,9 @@ func exitOnError(err error, cb func()) {
 		}
 		l.Fatal(err)
 	}
+}
+
+func showTop() {
+	t := NewTop(defaultApiServer)
+	t.Run()
 }

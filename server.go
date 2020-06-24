@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"snet/config"
@@ -27,6 +28,8 @@ type Server struct {
 	// Total number from start
 	HostRxBytesTotal map[string]uint64
 	HostTxBytesTotal map[string]uint64
+	rxLock           sync.Mutex
+	txLock           sync.Mutex
 	rxCh             chan *stats.P
 	txCh             chan *stats.P
 }
@@ -92,17 +95,21 @@ func (s *Server) receiveStat() {
 	for {
 		select {
 		case p := <-s.rxCh:
+			s.rxLock.Lock()
 			if _, ok := s.HostRxBytesTotal[p.Host]; ok {
 				s.HostRxBytesTotal[p.Host] += p.Rx
 			} else {
 				s.HostRxBytesTotal[p.Host] = p.Rx
 			}
+			s.rxLock.Unlock()
 		case p := <-s.txCh:
+			s.txLock.Lock()
 			if _, ok := s.HostTxBytesTotal[p.Host]; ok {
 				s.HostTxBytesTotal[p.Host] += p.Tx
 			} else {
 				s.HostTxBytesTotal[p.Host] = p.Tx
 			}
+			s.txLock.Unlock()
 		case <-s.ctx.Done():
 			return
 		}

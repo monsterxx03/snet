@@ -53,22 +53,22 @@ func (s *HostStats) RecordTx(tx uint64) {
 	s.txRing = s.txRing.Next()
 }
 
-func (s *HostStats) RxRate2() string {
+func (s *HostStats) RxRate2() float64 {
 	if s.rxRing.Move(-2).Value != nil {
 		valPrev := s.rxRing.Move(-2).Value.(uint64)
 		valCur := s.rxRing.Move(-1).Value.(uint64)
-		return fmt.Sprintf("%.2f", float64(valCur-valPrev)/RATE_INTERVAL)
+		return float64(valCur-valPrev)/RATE_INTERVAL
 	}
-	return "0"
+	return 0
 }
 
-func (s *HostStats) TxRate2() string {
+func (s *HostStats) TxRate2() float64 {
 	if s.txRing.Move(-2).Value != nil {
 		valPrev := s.txRing.Move(-2).Value.(uint64)
 		valCur := s.txRing.Move(-1).Value.(uint64)
-		return fmt.Sprintf("%.2f", float64(valCur-valPrev)/RATE_INTERVAL)
+		return float64(valCur-valPrev)/RATE_INTERVAL
 	}
-	return "0"
+	return 0
 }
 
 type Stats struct {
@@ -111,7 +111,7 @@ func (s *Stats) Record(rxMap, txMap map[string]uint64) {
 
 func (s *Stats) ToJson() []byte {
 	result := new(StatsApiModel)
-	result.Total = total{RxSize: fmt.Sprintf("%d", s.rxBytes), TxSize: fmt.Sprintf("%d", s.txBytes)}
+	result.Total = total{RxSize: s.rxBytes, TxSize: s.txBytes}
 	result.Hosts = make([]*host, 0, len(s.hosts))
 	for h, p := range s.hosts {
 		result.Hosts = append(result.Hosts, &host{Host: h,
@@ -128,7 +128,7 @@ func (s *Stats) ToJson() []byte {
 
 func (s *Stats) Print() {
 	for h, p := range s.hosts {
-		fmt.Printf("%s,rx/s: %s,tx/s: %s, rx: %d, tx: %d\n", h, p.RxRate2(), p.TxRate2(), p.RxTotal(), p.TxTotal())
+		fmt.Printf("%s, rx rate: %.2f/s,tx rate: %.2f/s, rx size: %d, tx size: %d\n", h, p.RxRate2(), p.TxRate2(), p.RxTotal(), p.TxTotal())
 	}
 	if len(s.hosts) > 0 {
 		fmt.Println()
