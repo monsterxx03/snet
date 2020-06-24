@@ -4,6 +4,7 @@ import (
 	"container/ring"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 const (
@@ -72,13 +73,14 @@ func (s *HostStats) TxRate2() float64 {
 }
 
 type Stats struct {
+	uptime time.Time
 	rxBytes uint64
 	txBytes uint64
 	hosts   map[string]*HostStats
 }
 
 func NewStats() *Stats {
-	return &Stats{hosts: make(map[string]*HostStats)}
+	return &Stats{uptime: time.Now(), hosts: make(map[string]*HostStats)}
 }
 
 // should be called once every second
@@ -111,6 +113,7 @@ func (s *Stats) Record(rxMap, txMap map[string]uint64) {
 
 func (s *Stats) ToJson() []byte {
 	result := new(StatsApiModel)
+	result.Uptime = time.Now().Sub(s.uptime).Truncate(time.Second).String()
 	result.Total = total{RxSize: s.rxBytes, TxSize: s.txBytes}
 	result.Hosts = make([]*host, 0, len(s.hosts))
 	for h, p := range s.hosts {

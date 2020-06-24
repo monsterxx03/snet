@@ -7,6 +7,8 @@ import (
 	"github.com/rivo/tview"
 	"io/ioutil"
 	"net/http"
+	"sort"
+	"text/tabwriter"
 	"time"
 
 	"snet/stats"
@@ -17,6 +19,14 @@ const (
 	b
 	kb
 	mb
+)
+
+const (
+	sortByRxRate = 'r'
+	sortByRxSize = 'R'
+	sortByTxRate = 't'
+	sortByTxSize = 'T'
+	sortByHost   = 'h'
 )
 
 func hb(s uint64) string {
@@ -96,11 +106,11 @@ func NewToolBar() *ToolBar {
 		quitAction:    NewAction("Quit", 'q'),
 		suspendAction: NewAction("Suspend", 's'),
 		sortGroup: NewActionGroup("Sort By:", []*Action{
-			NewAction("RX rate", 'r').Select(true),
-			NewAction("TX rate", 't'),
-			NewAction("RX size", 'R'),
-			NewAction("TX size", 'T'),
-			NewAction("Host", 'h'),
+			NewAction("RX rate", sortByRxRate).Select(true),
+			NewAction("TX rate", sortByTxRate),
+			NewAction("RX size", sortByRxSize),
+			NewAction("TX size", sortByTxSize),
+			NewAction("Host", sortByHost),
 		}),
 	}
 }
@@ -110,11 +120,10 @@ func (t *ToolBar) Do(key rune) {
 		t.quitAction.Select(true)
 	case 's':
 		t.suspendAction.Toggle()
-	case 'r', 't', 'R', 'T', 'h':
+	case sortByRxSize, sortByRxRate, sortByTxSize, sortByTxRate, sortByHost:
 		t.sortGroup.Select(key)
 	}
 }
-
 
 func (t *ToolBar) Draw(screen tcell.Screen) {
 	t.Box.Draw(screen)
@@ -130,11 +139,13 @@ type Top struct {
 	network *tview.TextView
 	dns     *tview.TextView
 	suspend bool
+	sortBy  rune
 }
 
 func NewTop(addr string) *Top {
 	t := new(Top)
 	t.addr = addr
+	t.sortBy = sortByRxRate
 	t.app = tview.NewApplication()
 	layout := tview.NewFlex().SetDirection(tview.FlexRow)
 	bar := NewToolBar()
@@ -147,7 +158,8 @@ func NewTop(addr string) *Top {
 		case 'q':
 			t.app.Stop()
 			return nil
-		case 'r', 't', 'R', 'T', 'h':
+		case sortByRxRate, sortByRxSize, sortByTxRate, sortByTxSize, sortByHost:
+			t.sortBy = event.Rune()
 			bar.Do(event.Rune())
 			return nil
 		}
@@ -155,9 +167,9 @@ func NewTop(addr string) *Top {
 	})
 	layoutUp := tview.NewFlex()
 	t.network = tview.NewTextView()
-	t.network.SetBorder(true).SetTitle("Network Status")
+	t.network.SetTitle("Network Status")
 	t.dns = tview.NewTextView()
-	t.dns.SetBorder(true).SetTitle("DNS Status")
+	t.dns.SetTitle("DNS Status")
 	layoutUp.AddItem(t.network, 0, 1, false).
 		AddItem(t.dns, 0, 1, false)
 
@@ -193,13 +205,37 @@ func (t *Top) Refresh() {
 		panic(err)
 	}
 	t.network.Clear()
-	fmt.Fprintf(t.network, "Rx Total: %s, Tx Total: %s\n\n", hb(r.Total.RxSize), hb(r.Total.TxSize))
-	for _, h := range r.Hosts {
-		fmt.Fprintf(t.network, "%s\n", h.Host)
-		fmt.Fprintf(t.network, "\t rx rate: %s/s tx rate: %s/s, rx size: %s, tx size: %s\n",
-			hb(uint64(h.RxRate)), hb(uint64(h.TxRate)), hb(h.RxSize), hb(h.TxSize))
+	fmt.Fprintf(t.network, "Uptime: %s, Rx Total: %s, Tx Total: %s\n\n", r.Uptime, hb(r.Total.RxSize), hb(r.Total.TxSize))
+	switch t.sortBy {
+	case sortByTxRate:
+		sort.Slice(r.Hosts, func(i, j int) bool {
+			return r.Hosts[i].TxRate > r.Hosts[j].TxRate
+		})
+	case sortByRxRate:
+		sort.Slice(r.Hosts, func(i, j int) bool {
+			return r.Hosts[i].RxRate > r.Hosts[j].RxRate
+		})
+	case sortByTxSize:
+		sort.Slice(r.Hosts, func(i, j int) bool {
+			return r.Hosts[i].TxSize > r.Hosts[j].TxSize
+		})
+	case sortByRxSize:
+		sort.Slice(r.Hosts, func(i, j int) bool {
+			return r.Hosts[i].RxSize > r.Hosts[j].RxSize
+		})
+	case sortByHost:
+		sort.Slice(r.Hosts, func(i, j int) bool {
+			return r.Hosts[i].Host > r.Hosts[j].Host
+		})
 	}
-	//t.network.ScrollToBeginning()
+	w := tabwriter.NewWriter(t.network, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(w, "Host\tRX rate\tTX rate\tRX size\tTX size\t")
+	for _, h := range r.Hosts {
+		fmt.Fprintf(w, "%s\t%s/s\t%s/s\t%s \t%s\t\n",
+			h.Host, hb(uint64(h.RxRate)), hb(uint64(h.TxRate)), hb(h.RxSize), hb(h.TxSize))
+	}
+	w.Flush()
+	t.network.ScrollToBeginning()
 	t.app.Draw()
 }
 

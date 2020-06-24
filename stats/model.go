@@ -14,6 +14,7 @@ type host struct {
 }
 
 type StatsApiModel struct {
+	Uptime string
 	Total total
 	Hosts []*host
 }
