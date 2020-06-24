@@ -106,7 +106,7 @@ func NewToolBar() *ToolBar {
 		quitAction:    NewAction("Quit", 'q'),
 		suspendAction: NewAction("Suspend", 's'),
 		sortGroup: NewActionGroup("Sort By:", []*Action{
-			NewAction("RX rate", sortByRxRate).Select(true),
+			NewAction("RX rate", sortByRxRate),
 			NewAction("TX rate", sortByTxRate),
 			NewAction("RX size", sortByRxSize),
 			NewAction("TX size", sortByTxSize),
@@ -138,17 +138,19 @@ type Top struct {
 	app     *tview.Application
 	network *tview.TextView
 	dns     *tview.TextView
+	toolBar *ToolBar
 	suspend bool
 	sortBy  rune
 }
 
 func NewTop(addr string) *Top {
+	bar := NewToolBar()
 	t := new(Top)
 	t.addr = addr
-	t.sortBy = sortByRxRate
+	t.toolBar = bar
 	t.app = tview.NewApplication()
+	t.sort(sortByRxRate)
 	layout := tview.NewFlex().SetDirection(tview.FlexRow)
-	bar := NewToolBar()
 	layout.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
 		case 's':
@@ -177,6 +179,11 @@ func NewTop(addr string) *Top {
 		AddItem(bar, 2, 0, false)
 	t.app.SetRoot(layout, true)
 	return t
+}
+
+func (t *Top) sort(key rune) {
+	t.sortBy = key
+	t.toolBar.Do(key)
 }
 
 func (t *Top) pullMetrics() (*stats.StatsApiModel, error) {
