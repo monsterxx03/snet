@@ -133,11 +133,11 @@ func (s *LocalServer) refreshTrafficRate() {
 	for {
 		select {
 		case <-ticker:
-			s.server.rxLock.Lock()
-			s.server.txLock.Lock()
-			s.stats.Record(s.server.HostRxBytesTotal, s.server.HostTxBytesTotal)
-			s.server.rxLock.Unlock()
-			s.server.txLock.Unlock()
+			s.server.HostRxBytesTotal.RLock()
+			s.server.HostTxBytesTotal.RLock()
+			s.stats.Record(s.server.HostRxBytesTotal.m, s.server.HostTxBytesTotal.m)
+			s.server.HostRxBytesTotal.RUnlock()
+			s.server.HostTxBytesTotal.RUnlock()
 		case <-s.ctx.Done():
 			l.Info("quit traffic stats refresh goroutine")
 			return

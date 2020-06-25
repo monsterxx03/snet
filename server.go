@@ -18,6 +18,11 @@ const (
 	SO_ORIGINAL_DST = 80 // /usr/includ/linux/netfilter_ipv4.h
 )
 
+type HostBytesMap struct {
+	sync.RWMutex
+	m map[string]uint64
+}
+
 type Server struct {
 	ctx      context.Context
 	cfg      *config.Config
@@ -26,10 +31,8 @@ type Server struct {
 	timeout  time.Duration
 
 	// Total number from start
-	HostRxBytesTotal map[string]uint64
-	HostTxBytesTotal map[string]uint64
-	rxLock           sync.Mutex
-	txLock           sync.Mutex
+	HostRxBytesTotal *HostBytesMap
+	HostTxBytesTotal *HostBytesMap
 	rxCh             chan *stats.P
 	txCh             chan *stats.P
 }
@@ -66,8 +69,8 @@ func NewServer(ctx context.Context, c *config.Config) (*Server, error) {
 		listener:         ln.(*net.TCPListener),
 		proxy:            p,
 		timeout:          time.Duration(c.ProxyTimeout) * time.Second,
-		HostRxBytesTotal: make(map[string]uint64),
-		HostTxBytesTotal: make(map[string]uint64),
+		HostRxBytesTotal: &HostBytesMap{m: make(map[string]uint64)},
+		HostTxBytesTotal: &HostBytesMap{m: make(map[string]uint64)},
 		rxCh:             rxCh,
 		txCh:             txCh,
 	}, nil
@@ -95,21 +98,21 @@ func (s *Server) receiveStat() {
 	for {
 		select {
 		case p := <-s.rxCh:
-			s.rxLock.Lock()
-			if _, ok := s.HostRxBytesTotal[p.Host]; ok {
-				s.HostRxBytesTotal[p.Host] += p.Rx
+			s.HostRxBytesTotal.Lock()
+			if _, ok := s.HostRxBytesTotal.m[p.Host]; ok {
+				s.HostRxBytesTotal.m[p.Host] += p.Rx
 			} else {
-				s.HostRxBytesTotal[p.Host] = p.Rx
+				s.HostRxBytesTotal.m[p.Host] = p.Rx
 			}
-			s.rxLock.Unlock()
+			s.HostRxBytesTotal.Unlock()
 		case p := <-s.txCh:
-			s.txLock.Lock()
-			if _, ok := s.HostTxBytesTotal[p.Host]; ok {
-				s.HostTxBytesTotal[p.Host] += p.Tx
+			s.HostTxBytesTotal.Lock()
+			if _, ok := s.HostTxBytesTotal.m[p.Host]; ok {
+				s.HostTxBytesTotal.m[p.Host] += p.Tx
 			} else {
-				s.HostTxBytesTotal[p.Host] = p.Tx
+				s.HostTxBytesTotal.m[p.Host] = p.Tx
 			}
-			s.txLock.Unlock()
+			s.HostTxBytesTotal.Unlock()
 		case <-s.ctx.Done():
 			return
 		}
