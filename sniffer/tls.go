@@ -1,11 +1,7 @@
-package proxy
+package sniffer
 
 import (
 	"errors"
-	"net"
-	"time"
-
-	"snet/logger"
 )
 
 const (
@@ -21,6 +17,10 @@ func parseServerNameFromSNI(data []byte) (string, error) {
 		handshake header(5): content-type(1) + version(2), len (2)
 		38: handshake-type(1) + len(2) + version(2) + random:ts(4) + random(28)
 	*/
+	if data[0] != TLSRecordLayerTypeHandShake || data[5] != TLSHandshakeTypeClientHello {
+		return "", errors.New("Not tls client hello packet")
+	}
+
 	index := 5 + 38
 
 	index += 1 + int(data[index]) // sension id len(1) + session id
@@ -61,64 +61,4 @@ func parseServerNameFromSNI(data []byte) (string, error) {
 		}
 	}
 	return "", errors.New("SNI block not found")
-}
-
-type Intercept struct {
-	dstHost string
-	dstPort int
-	conn    *net.TCPConn
-	l       *logger.Logger
-}
-
-func NewIntercept(conn *net.TCPConn, dstHost string, dstPort int, l *logger.Logger) *Intercept {
-	return &Intercept{dstHost, dstPort, conn, l}
-}
-
-func (i *Intercept) explore(b []byte) {
-	if i.dstPort == 443 {
-		if b[0] == TLSRecordLayerTypeHandShake && b[5] == TLSHandshakeTypeClientHello {
-			serverName, err := parseServerNameFromSNI(b)
-			if err != nil {
-				i.l.Error("failed to parse server name:", err)
-			}
-			i.l.Infof("https  %s %s", serverName, i.dstHost)
-		}
-	}
-}
-
-func (i *Intercept) Read(b []byte) (int, error) {
-	n, err := i.conn.Read(b)
-	if err == nil {
-		i.explore(b[:n])
-	}
-	return n, err
-}
-
-func (i *Intercept) Write(b []byte) (int, error) {
-	n, err := i.conn.Write(b)
-	return n, err
-}
-
-func (i *Intercept) Close() error {
-	return i.conn.Close()
-}
-
-func (i *Intercept) LocalAddr() net.Addr {
-	return i.conn.LocalAddr()
-}
-
-func (i *Intercept) RemoteAddr() net.Addr {
-	return i.conn.RemoteAddr()
-}
-
-func (i *Intercept) SetDeadline(t time.Time) error {
-	return i.conn.SetDeadline(t)
-}
-
-func (i *Intercept) SetReadDeadline(t time.Time) error {
-	return i.conn.SetReadDeadline(t)
-}
-
-func (i *Intercept) SetWriteDeadline(t time.Time) error {
-	return i.conn.SetWriteDeadline(t)
 }

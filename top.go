@@ -175,8 +175,8 @@ func NewTop(addr string) *Top {
 	t.network = tview.NewTextView()
 	t.dns = tview.NewTextView()
 	t.dns.SetTitle("DNS Status")
-	layoutUp.AddItem(t.network, 0, 1, false).
-		AddItem(t.dns, 0, 1, false)
+	layoutUp.AddItem(t.network, 0, 1, false)
+	// AddItem(t.dns, 0, 1, false)
 
 	layout.AddItem(layoutUp, 0, 1, false).
 		AddItem(bar, 2, 0, false)

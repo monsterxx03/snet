@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	exec "os/exec"
@@ -11,6 +12,7 @@ import (
 	"text/template"
 	"time"
 
+	"snet/sniffer"
 	"snet/stats"
 )
 
@@ -53,13 +55,30 @@ func NamedFmt(msg string, args map[string]interface{}) (string, error) {
 	return result.String(), nil
 }
 
-func Pipe(ctx context.Context, src, remote net.Conn, timeout time.Duration, rxCh, txCh chan *stats.P, dstHost string) error {
+func Pipe(ctx context.Context, src, remote net.Conn, timeout time.Duration, rxCh, txCh chan *stats.P, dstHost string, dstPort int, sn *sniffer.Sniffer) error {
 	count := 2
 	doneCh := make(chan bool, count)
 	errCh := make(chan error, count)
 	const toRemote = 1
 	const toLocal = 0
-	p := &stats.P{Host: dstHost}
+	p := &stats.P{Host: fmt.Sprintf("%s:%d", dstHost, dstPort)}
+	// server name sniffer
+	if sn != nil {
+		if sn.EnableTLS && dstPort == 443 {
+			serverName, buf, err := sn.SnifferTLSSNI(src)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				p.Host = fmt.Sprintf("%s:%d", serverName, dstPort)
+			}
+			n, err := remote.Write(buf)
+			p.Tx += uint64(n)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	cp := func(r, w net.Conn, direction int) {
 		if err := r.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 			errCh <- err

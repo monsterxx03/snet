@@ -10,6 +10,7 @@ import (
 	"snet/config"
 	"snet/proxy"
 	"snet/redirector"
+	"snet/sniffer"
 	"snet/stats"
 	"snet/utils"
 )
@@ -130,11 +131,12 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	if err != nil {
 		return err
 	}
-	// if intercept is enabled, use i to replace conn
-	// i := proxy.NewIntercept(conn, dstHost, dstPort, l)
 	defer remoteConn.Close()
-	// TODO do intercept to figure out tls/http server_name
-	if err := utils.Pipe(s.ctx, conn, remoteConn, s.timeout, s.rxCh, s.txCh, fmt.Sprintf("%s:%d", dstHost, dstPort)); err != nil {
+	var sn *sniffer.Sniffer
+	if s.cfg.EnableStats {
+		sn = sniffer.NewSniffer(s.cfg.StatsEnableTLSSNISniffer, s.cfg.StatsEnableHTTPHostSniffer)
+	}
+	if err := utils.Pipe(s.ctx, conn, remoteConn, s.timeout, s.rxCh, s.txCh, dstHost, dstPort, sn); err != nil {
 		l.Error(err)
 	}
 	return nil
