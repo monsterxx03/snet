@@ -55,9 +55,9 @@ func NewAction(label string, key rune) *Action {
 
 func (a *Action) String() string {
 	if a.selected {
-		return fmt.Sprintf(`[:red]%s(%c)[-:-:-]`, a.Label, a.Key)
+		return fmt.Sprintf(`[black:white]%s(%c)[white:black]`, a.Label, a.Key)
 	}
-	return fmt.Sprintf("%s([red]%c[-:-:-])", a.Label, a.Key)
+	return fmt.Sprintf("%s([red]%c[white:black])", a.Label, a.Key)
 }
 
 func (a *Action) Select(t bool) *Action {
@@ -173,7 +173,6 @@ func NewTop(addr string) *Top {
 	})
 	layoutUp := tview.NewFlex()
 	t.network = tview.NewTextView()
-	t.network.SetTitle("Network Status")
 	t.dns = tview.NewTextView()
 	t.dns.SetTitle("DNS Status")
 	layoutUp.AddItem(t.network, 0, 1, false).
