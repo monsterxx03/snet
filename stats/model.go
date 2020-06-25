@@ -7,6 +7,7 @@ type total struct {
 
 type host struct {
 	Host   string
+	Port   int
 	RxRate float64
 	TxRate float64
 	RxSize uint64
@@ -15,6 +16,6 @@ type host struct {
 
 type StatsApiModel struct {
 	Uptime string
-	Total total
-	Hosts []*host
+	Total  total
+	Hosts  []*host
 }

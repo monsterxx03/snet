@@ -56,7 +56,7 @@ func NewServer(ctx context.Context, c *config.Config) (*Server, error) {
 		return nil, err
 	}
 	var rxCh, txCh chan *stats.P
-	if c.EnableStat {
+	if c.EnableStats {
 		rxCh = make(chan *stats.P, 1)
 		txCh = make(chan *stats.P, 1)
 	}
@@ -75,7 +75,7 @@ func NewServer(ctx context.Context, c *config.Config) (*Server, error) {
 
 func (s *Server) Run() error {
 	l.Infof("Proxy server listen on tcp %s:%d", s.cfg.LHost, s.cfg.LPort)
-	if s.cfg.EnableStat {
+	if s.cfg.EnableStats {
 		go s.receiveStat()
 	}
 	for {

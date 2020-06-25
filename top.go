@@ -27,6 +27,7 @@ const (
 	sortByTxRate = 't'
 	sortByTxSize = 'T'
 	sortByHost   = 'h'
+	sortByPort   = 'p'
 )
 
 func hb(s uint64) string {
@@ -86,7 +87,7 @@ func (g *ActionGroup) Select(key rune) {
 }
 
 func (g *ActionGroup) String() string {
-	s := fmt.Sprintf("|%s ", g.name)
+	s := fmt.Sprintf("%s ", g.name)
 	for _, a := range g.actions {
 		s += a.String() + " "
 	}
@@ -111,6 +112,7 @@ func NewToolBar() *ToolBar {
 			NewAction("RX size", sortByRxSize),
 			NewAction("TX size", sortByTxSize),
 			NewAction("Host", sortByHost),
+			NewAction("Port", sortByPort),
 		}),
 	}
 }
@@ -120,7 +122,7 @@ func (t *ToolBar) Do(key rune) {
 		t.quitAction.Select(true)
 	case 's':
 		t.suspendAction.Toggle()
-	case sortByRxSize, sortByRxRate, sortByTxSize, sortByTxRate, sortByHost:
+	case sortByRxSize, sortByRxRate, sortByTxSize, sortByTxRate, sortByHost, sortByPort:
 		t.sortGroup.Select(key)
 	}
 }
@@ -129,7 +131,7 @@ func (t *ToolBar) Draw(screen tcell.Screen) {
 	t.Box.Draw(screen)
 	x, y, width, _ := t.GetInnerRect()
 
-	tview.Print(screen, fmt.Sprintf("%s %s %s", t.quitAction, t.suspendAction, t.sortGroup),
+	tview.Print(screen, fmt.Sprintf("%s %s|%s", t.quitAction, t.suspendAction, t.sortGroup),
 		x, y, width, tview.AlignLeft, tcell.ColorWhite)
 }
 
@@ -139,6 +141,7 @@ type Top struct {
 	network *tview.TextView
 	dns     *tview.TextView
 	toolBar *ToolBar
+	stats   *stats.StatsApiModel
 	suspend bool
 	sortBy  rune
 }
@@ -160,9 +163,10 @@ func NewTop(addr string) *Top {
 		case 'q':
 			t.app.Stop()
 			return nil
-		case sortByRxRate, sortByRxSize, sortByTxRate, sortByTxSize, sortByHost:
+		case sortByRxRate, sortByRxSize, sortByTxRate, sortByTxSize, sortByHost, sortByPort:
 			t.sortBy = event.Rune()
 			bar.Do(event.Rune())
+			t.Refresh(false)
 			return nil
 		}
 		return event
@@ -186,31 +190,28 @@ func (t *Top) sort(key rune) {
 	t.toolBar.Do(key)
 }
 
-func (t *Top) pullMetrics() (*stats.StatsApiModel, error) {
+func (t *Top) pullMetrics() error {
 	r, err := http.Get(t.addr + "/stats")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	r1 := new(stats.StatsApiModel)
-	if err := json.Unmarshal(body, r1); err != nil {
-		return nil, err
+	t.stats = new(stats.StatsApiModel)
+	if err := json.Unmarshal(body, t.stats); err != nil {
+		return err
 	}
-	return r1, nil
+	return nil
 }
 
-func (t *Top) Refresh() {
+func (t *Top) Refresh(draw bool) {
 	if t.suspend {
 		return
 	}
-	r, err := t.pullMetrics()
-	if err != nil {
-		panic(err)
-	}
+	r := t.stats
 	t.network.Clear()
 	fmt.Fprintf(t.network, "Uptime: %s, Rx Total: %s, Tx Total: %s\n\n", r.Uptime, hb(r.Total.RxSize), hb(r.Total.TxSize))
 	switch t.sortBy {
@@ -234,22 +235,31 @@ func (t *Top) Refresh() {
 		sort.Slice(r.Hosts, func(i, j int) bool {
 			return r.Hosts[i].Host > r.Hosts[j].Host
 		})
+	case sortByPort:
+		sort.Slice(r.Hosts, func(i, j int) bool {
+			return r.Hosts[i].Port > r.Hosts[j].Port
+		})
 	}
 	w := tabwriter.NewWriter(t.network, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(w, "Host\tRX rate\tTX rate\tRX size\tTX size\t")
+	fmt.Fprintln(w, "Host\tPort\tRX rate\tTX rate\tRX size\tTX size\t")
 	for _, h := range r.Hosts {
-		fmt.Fprintf(w, "%s\t%s/s\t%s/s\t%s \t%s\t\n",
-			h.Host, hb(uint64(h.RxRate)), hb(uint64(h.TxRate)), hb(h.RxSize), hb(h.TxSize))
+		fmt.Fprintf(w, "%s\t%d\t%s/s\t%s/s\t%s \t%s\t\n",
+			h.Host, h.Port, hb(uint64(h.RxRate)), hb(uint64(h.TxRate)), hb(h.RxSize), hb(h.TxSize))
 	}
 	w.Flush()
 	t.network.ScrollToBeginning()
-	t.app.Draw()
+	if draw {
+		t.app.Draw()
+	}
 }
 
 func (t *Top) Run() {
 	go func() {
 		for {
-			t.Refresh()
+			if err := t.pullMetrics(); err != nil {
+				panic(err)
+			}
+			t.Refresh(true)
 			time.Sleep(2 * time.Second)
 		}
 	}()

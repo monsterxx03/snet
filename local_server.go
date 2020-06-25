@@ -114,13 +114,13 @@ func (s *LocalServer) Run(dnsCache *cache.LRU) {
 
 	go s.dnServer.Run()
 	go s.server.Run()
-	if s.cfg.EnableStat {
+	if s.cfg.EnableStats {
 		go s.refreshTrafficRate()
 		http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(s.stats.ToJson())
 		})
-		addr := fmt.Sprintf("%s:%d", s.cfg.LHost, s.cfg.StatPort)
+		addr := fmt.Sprintf("%s:%d", s.cfg.LHost, s.cfg.StatsPort)
 		l.Infof("Api server listen on http://%s", addr)
 		go http.ListenAndServe(addr, nil)
 	}

@@ -38,9 +38,9 @@
     "block-host-file": "",
     "block-hosts": ["*.hpplay.cn"],
     "mode": "local",
-    "enable-stat": false,
-    "stat-port": 8810,
-    "stat-intercept-server-name": false,
+    "enable-stats": false,
+    "stats-port": 8810,
+    "stats-intercept-tls-sni": false,
     "active-eni": "en0",
 
     "upstream-type": "tls",

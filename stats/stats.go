@@ -4,6 +4,8 @@ import (
 	"container/ring"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -55,10 +57,10 @@ func (s *HostStats) RecordTx(tx uint64) {
 }
 
 func (s *HostStats) RxRate2() float64 {
-	if s.rxRing.Move(-2).Value != nil {
-		valPrev := s.rxRing.Move(-2).Value.(uint64)
+	if s.rxRing.Move(-3).Value != nil {
+		valPrev := s.rxRing.Move(-3).Value.(uint64)
 		valCur := s.rxRing.Move(-1).Value.(uint64)
-		return float64(valCur-valPrev)/RATE_INTERVAL
+		return float64(valCur-valPrev) / RATE_INTERVAL
 	}
 	return 0
 }
@@ -67,13 +69,13 @@ func (s *HostStats) TxRate2() float64 {
 	if s.txRing.Move(-2).Value != nil {
 		valPrev := s.txRing.Move(-2).Value.(uint64)
 		valCur := s.txRing.Move(-1).Value.(uint64)
-		return float64(valCur-valPrev)/RATE_INTERVAL
+		return float64(valCur-valPrev) / RATE_INTERVAL
 	}
 	return 0
 }
 
 type Stats struct {
-	uptime time.Time
+	uptime  time.Time
 	rxBytes uint64
 	txBytes uint64
 	hosts   map[string]*HostStats
@@ -117,7 +119,10 @@ func (s *Stats) ToJson() []byte {
 	result.Total = total{RxSize: s.rxBytes, TxSize: s.txBytes}
 	result.Hosts = make([]*host, 0, len(s.hosts))
 	for h, p := range s.hosts {
-		result.Hosts = append(result.Hosts, &host{Host: h,
+		pa := strings.Split(h, ":")
+		port, _ := strconv.Atoi(pa[1])
+		result.Hosts = append(result.Hosts, &host{Host: pa[0],
+			Port:   port,
 			RxRate: p.RxRate2(), TxRate: p.TxRate2(),
 			RxSize: p.RxTotal(), TxSize: p.TxTotal(),
 		})
