@@ -29,7 +29,8 @@ var configFile = flag.String("config", "", "json config file path, only used whe
 var clean = flag.Bool("clean", false, "cleanup iptables and ipset")
 var version = flag.Bool("version", false, "print version only")
 var verbose = flag.Bool("v", false, "verbose output")
-var top = flag.Bool("top", false,  "show metrics in terminal")
+var top = flag.Bool("top", false, "show metrics in terminal")
+var apiAddr = flag.String("api", defaultApiServer, "snet api address, used with -top")
 var l *logger.Logger
 
 func main() {
@@ -110,6 +111,6 @@ func exitOnError(err error, cb func()) {
 }
 
 func showTop() {
-	t := NewTop(defaultApiServer)
+	t := NewTop(*apiAddr)
 	t.Run()
 }

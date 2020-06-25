@@ -254,9 +254,13 @@ func (t *Top) Refresh(draw bool) {
 }
 
 func (t *Top) Run() {
+	if err := t.pullMetrics(); err != nil {
+		panic(err)
+	}
 	go func() {
 		for {
 			if err := t.pullMetrics(); err != nil {
+				t.app.Stop()
 				panic(err)
 			}
 			t.Refresh(true)
