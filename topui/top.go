@@ -53,35 +53,51 @@ func NewTop(addr string) *Top {
 	layout := tview.NewFlex().SetDirection(tview.FlexRow)
 	t.network = tview.NewTextView()
 
+	suspendAction := NewSelectAction("Suspend", keySuspend, true, false, func() {
+		t.suspend = !t.suspend
+	})
+
 	bar := NewToolBar(
-		NewSelectAction("Quit", keyQuit, false, func() {
+		NewSelectAction("Quit", keyQuit, false, false, func() {
 			t.app.Stop()
 		}),
-		NewSelectAction("Suspend", keySuspend, false, func() {
-			t.suspend = !t.suspend
+		suspendAction,
+		NewSelectAction("↓", 'j', false, false, func() {
+			if !suspendAction.Selected() {
+				suspendAction.Select()
+			}
+			r, c := t.network.GetScrollOffset()
+			t.network.ScrollTo(r+1, c)
+		}),
+		NewSelectAction("↑", 'k', false, false, func() {
+			if !suspendAction.Selected() {
+				suspendAction.Select()
+			}
+			r, c := t.network.GetScrollOffset()
+			t.network.ScrollTo(r-1, c)
 		}),
 		NewSelectGroupAction("|Sort:",
-			NewSelectAction("Rx Rate", keySortByRxRate, true, func() {
+			NewSelectAction("Rx Rate", keySortByRxRate, true, true, func() {
 				t.sort(keySortByRxRate)
 				t.Refresh(false)
 			}),
-			NewSelectAction("Tx Rate", keySortByTxRate, false, func() {
+			NewSelectAction("Tx Rate", keySortByTxRate, true, false, func() {
 				t.sort(keySortByTxRate)
 				t.Refresh(false)
 			}),
-			NewSelectAction("Rx Size", keySortByRxSize, false, func() {
+			NewSelectAction("Rx Size", keySortByRxSize, true, false, func() {
 				t.sort(keySortByRxSize)
 				t.Refresh(false)
 			}),
-			NewSelectAction("Tx Size", keySortByTxSize, false, func() {
+			NewSelectAction("Tx Size", keySortByTxSize, true, false, func() {
 				t.sort(keySortByTxSize)
 				t.Refresh(false)
 			}),
-			NewSelectAction("Host", keySortByHost, false, func() {
+			NewSelectAction("Host", keySortByHost, true, false, func() {
 				t.sort(keySortByHost)
 				t.Refresh(false)
 			}),
-			NewSelectAction("Port", keySortByPort, false, func() {
+			NewSelectAction("Port", keySortByPort, true, false, func() {
 				t.sort(keySortByPort)
 				t.Refresh(false)
 			}),

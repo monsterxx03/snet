@@ -20,8 +20,6 @@ const (
 type ToolBar struct {
 	*tview.Flex
 	keyActionMap map[rune]tview.Primitive
-	// sortGroup     *ActionGroup
-	// filterAction  *FilterAction
 }
 
 func NewToolBar(actions ...tview.Primitive) *ToolBar {
@@ -42,7 +40,11 @@ func NewToolBar(actions ...tview.Primitive) *ToolBar {
 		key := event.Rune()
 		if a, ok := m[key]; ok {
 			if a1, ok := a.(*SelectAction); ok {
-				a1.Toggle()
+				if a1.Selectable() {
+					a1.Toggle()
+				} else {
+					a1.Do()
+				}
 			} else if a1, ok := a.(*SelectGroupAction); ok {
 				a1.Select(key)
 			}

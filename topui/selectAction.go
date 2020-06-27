@@ -2,6 +2,7 @@ package topui
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
@@ -9,21 +10,37 @@ import (
 
 type SelectAction struct {
 	*tview.Box
-	Label    string
-	Key      rune
-	selected bool
-	cb       func()
+	Label      string
+	Key        rune
+	selected   bool
+	selectable bool
+	cb         func()
 }
 
-func NewSelectAction(label string, key rune, selected bool, cb func()) *SelectAction {
+func NewSelectAction(label string, key rune, selectable, selected bool, cb func()) *SelectAction {
 	return &SelectAction{
-		Box:   tview.NewBox(),
-		Label: label, Key: key, selected: selected,
-		cb: cb}
+		Box:        tview.NewBox(),
+		Label:      label,
+		Key:        key,
+		selectable: selectable,
+		selected:   selected,
+		cb:         cb}
+}
+
+func (s *SelectAction) Selectable() bool {
+	return s.selectable
+}
+
+func (s *SelectAction) Selected() bool {
+	return s.selected
+}
+
+func (s *SelectAction) Do() {
+	s.cb()
 }
 
 func (s *SelectAction) TextLen() int {
-	return len(s.Label) + 3
+	return utf8.RuneCountInString(s.Label) + 3
 }
 
 func (s *SelectAction) Select() {
