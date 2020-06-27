@@ -31,9 +31,9 @@ func (s *Sniffer) SnifferTLSSNI(conn net.Conn) (serverName string, buf []byte, e
 	return
 }
 
-func (s *Sniffer) SnifferHTTPHost(data []byte) (string, error) {
+func (s *Sniffer) SnifferHTTPHost(conn net.Conn) (serverName string, buf []byte, err error) {
 	if s.EnableHTTP {
-		return "", nil
+		return
 	}
-	return "", nil
+	return
 }

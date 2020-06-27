@@ -76,6 +76,8 @@ func Pipe(ctx context.Context, src, remote net.Conn, timeout time.Duration, rxCh
 			if err != nil {
 				return err
 			}
+		} else if sn.EnableHTTP && dstPort == 80 {
+			sn.SnifferHTTPHost(src)
 		}
 	}
 

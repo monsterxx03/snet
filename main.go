@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
+
 	"snet/config"
 	"snet/logger"
-	"syscall"
+	"snet/topui"
 )
 
 //go:generate go run chnroutes_generate.go
@@ -111,6 +113,6 @@ func exitOnError(err error, cb func()) {
 }
 
 func showTop() {
-	t := NewTop(*apiAddr)
+	t := topui.NewTop(*apiAddr)
 	t.Run()
 }
