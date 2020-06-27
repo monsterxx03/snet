@@ -19,11 +19,13 @@ const (
 
 type ToolBar struct {
 	*tview.Flex
+	top          *Top
 	keyActionMap map[rune]tview.Primitive
 }
 
-func NewToolBar(actions ...tview.Primitive) *ToolBar {
+func NewToolBar(top *Top, actions ...tview.Primitive) *ToolBar {
 	flex := tview.NewFlex()
+	bar := &ToolBar{Flex: flex, top: top}
 	m := make(map[rune]tview.Primitive)
 	for _, a := range actions {
 		if s, ok := a.(*SelectAction); ok {
@@ -36,26 +38,49 @@ func NewToolBar(actions ...tview.Primitive) *ToolBar {
 			}
 		}
 	}
+	bar.keyActionMap = m
+
+	filterAction := NewSelectAction("Filter:", keyFilter, false, false, nil)
+	filterInput := tview.NewInputField()
+	filterInput.SetChangedFunc(func(text string) {
+		top.FilterHost(text)
+	})
+	filterInput.SetDoneFunc(func(key tcell.Key) {
+		// exit searching state
+		if key == tcell.KeyEscape || key == tcell.KeyEnter {
+			flex.RemoveItem(filterInput)
+			flex.AddItem(filterAction, 0, 1, false)
+			top.app.SetFocus(bar)
+			top.UnSuspend()
+			filterAction.SetLabel("Filter:" + filterInput.GetText())
+			top.Refresh(false)
+		}
+	})
+	flex.AddItem(filterAction, 0, 1, false)
+
 	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		key := event.Rune()
 		if a, ok := m[key]; ok {
-			if a1, ok := a.(*SelectAction); ok {
-				if a1.Selectable() {
-					a1.Toggle()
+			if s, ok := a.(*SelectAction); ok {
+				if s.Selectable() {
+					s.Toggle()
 				} else {
-					a1.Do()
+					s.Do()
 				}
-			} else if a1, ok := a.(*SelectGroupAction); ok {
-				a1.Select(key)
+			} else if s, ok := a.(*SelectGroupAction); ok {
+				s.Select(key)
 			}
 			return nil
+		} else if key == keyFilter {
+			// changing to search state
+			flex.RemoveItem(filterAction)
+			flex.AddItem(filterInput, 0, 1, false)
+			top.app.SetFocus(filterInput)
+			top.Suspend()
 		}
 		return event
 	})
-	return &ToolBar{
-		Flex:         flex,
-		keyActionMap: m,
-	}
+	return bar
 }
 
 func (t *ToolBar) Draw(screen tcell.Screen) {

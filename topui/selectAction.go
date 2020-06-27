@@ -39,6 +39,10 @@ func (s *SelectAction) Do() {
 	s.cb()
 }
 
+func (s *SelectAction) SetLabel(label string) {
+	s.Label = label
+}
+
 func (s *SelectAction) TextLen() int {
 	return utf8.RuneCountInString(s.Label) + 3
 }
@@ -83,7 +87,7 @@ func NewSelectGroupAction(name string, actions ...*SelectAction) *SelectGroupAct
 		keys = append(keys, a.Key)
 		flex.AddItem(a, a.TextLen()+1, 0, false)
 	}
-	flex.AddItem(tview.NewBox(), 0, 1, false) // spacer to fill width
+	flex.AddItem(tview.NewBox(), 0, 1, false)
 	return &SelectGroupAction{Flex: flex, actions: actions, keys: keys}
 }
 

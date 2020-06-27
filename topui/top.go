@@ -3,11 +3,13 @@ package topui
 import (
 	"github.com/rivo/tview"
 
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"text/tabwriter"
 	"time"
@@ -35,14 +37,42 @@ func hb(s uint64) string {
 	return fmt.Sprintf("%.2fGB", float64(s)/mb)
 }
 
+func highlight(text, word string) string {
+	idxStart := strings.Index(text, word)
+	if idxStart == -1 {
+		return text
+	}
+	idxEnd := idxStart + len(word)
+	return fmt.Sprintf("%s[red]%s[white]%s", text[:idxStart], word, text[idxEnd:])
+}
+
 type Top struct {
-	addr        string
-	app         *tview.Application
-	network     *tview.TextView
-	stats       *stats.StatsApiModel
-	suspend     bool
-	sortBy      rune
-	refreshLock sync.Mutex
+	addr          string
+	app           *tview.Application
+	network       *tview.TextView
+	stats         *stats.StatsApiModel
+	suspend       bool
+	suspendAction *SelectAction
+	sortBy        rune
+	hostFilter    string
+	refreshLock   sync.Mutex
+}
+
+func (t *Top) Suspend() {
+	if !t.suspend {
+		t.suspendAction.Select()
+	}
+}
+
+func (t *Top) UnSuspend() {
+	if t.suspend {
+		t.suspend = false
+		t.suspendAction.UnSelect()
+	}
+}
+
+func (t *Top) FilterHost(search string) {
+	t.hostFilter = search
 }
 
 func NewTop(addr string) *Top {
@@ -53,35 +83,32 @@ func NewTop(addr string) *Top {
 	layout := tview.NewFlex().SetDirection(tview.FlexRow)
 	t.network = tview.NewTextView()
 
-	suspendAction := NewSelectAction("Suspend", keySuspend, true, false, func() {
+	t.suspendAction = NewSelectAction("Suspend", keySuspend, true, false, func() {
 		t.suspend = !t.suspend
 	})
 
 	bar := NewToolBar(
+		t,
 		NewSelectAction("Quit", keyQuit, false, false, func() {
 			t.app.Stop()
 		}),
-		suspendAction,
+		t.suspendAction,
 		NewSelectAction("↓", 'j', false, false, func() {
-			if !suspendAction.Selected() {
-				suspendAction.Select()
-			}
+			t.Suspend()
 			r, c := t.network.GetScrollOffset()
 			t.network.ScrollTo(r+1, c)
 		}),
 		NewSelectAction("↑", 'k', false, false, func() {
-			if !suspendAction.Selected() {
-				suspendAction.Select()
-			}
+			t.Suspend()
 			r, c := t.network.GetScrollOffset()
 			t.network.ScrollTo(r-1, c)
 		}),
 		NewSelectGroupAction("|Sort:",
-			NewSelectAction("Rx Rate", keySortByRxRate, true, true, func() {
+			NewSelectAction("Rx/s", keySortByRxRate, true, true, func() {
 				t.sort(keySortByRxRate)
 				t.Refresh(false)
 			}),
-			NewSelectAction("Tx Rate", keySortByTxRate, true, false, func() {
+			NewSelectAction("Tx/s", keySortByTxRate, true, false, func() {
 				t.sort(keySortByTxRate)
 				t.Refresh(false)
 			}),
@@ -167,13 +194,23 @@ func (t *Top) Refresh(draw bool) {
 			return r.Hosts[i].Port > r.Hosts[j].Port
 		})
 	}
-	w := tabwriter.NewWriter(t.network, 0, 0, 2, ' ', tabwriter.AlignRight)
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(w, "Host\tPort\tRX rate\tTX rate\tRX size\tTX size\t")
 	for _, h := range r.Hosts {
+		host := h.Host
+		if t.hostFilter != "" {
+			if !strings.Contains(h.Host, t.hostFilter) {
+				continue
+			} else {
+				host = highlight(host, t.hostFilter)
+			}
+		}
 		fmt.Fprintf(w, "%s\t%d\t%s/s\t%s/s\t%s \t%s\t\n",
-			h.Host, h.Port, hb(uint64(h.RxRate)), hb(uint64(h.TxRate)), hb(h.RxSize), hb(h.TxSize))
+			host, h.Port, hb(uint64(h.RxRate)), hb(uint64(h.TxRate)), hb(h.RxSize), hb(h.TxSize))
 	}
 	w.Flush()
+	fmt.Fprintf(t.network, "%s", buf.String())
 	t.network.ScrollToBeginning()
 	if draw {
 		t.app.Draw()
