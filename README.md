@@ -37,29 +37,6 @@ Router:
 
 ## Usage
 
-### As upstream server
-
-example config.json:
-
-    {
-        "as-upstream": true,
-        "upstream-type": "tls",
-        "upstream-tls-server-listen": "0.0.0.0:9999",
-        "upstream-tls-key": "server.key", # created by: openssl genrsa -out server.key 2048
-        "upstream-tls-crt": "server.pem", # created by: openssl req -new -x509 -key server.key -out server.pem -days 3650
-        "upstream-tls-token": "xxxx"  # random string
-    }
-
-Only support tls tunnel when run as upstream server
-
-upstream-type:
-
-- tls: run as tls tunnel server
-
-Run:
-
-    ./snet -config config.json
-
 
 ### As client
 
@@ -146,6 +123,91 @@ If proxy-scope is `global`, both should return ss server ip.
 
 If you use it on router, change `mode` to `router`, and listen-host should be your router's ip or `0.0.0.0`
 
+### Stats api and terminal top UI
+
+In config.json:
+
+-  "enable-stats": true  // enable stats api
+-  "stats-port": 8810 // stats api listen port
+-  "stats-enable-tls-sni-sniffer": true  // enable sni sniffer for tls
+
+snet server will serve stats api on  port 8810 
+
+curl http://localhost:8810/stats
+
+    
+        {
+            "Uptime": "26m42s",
+            "Total": {
+                "RxSize": 161539743,
+                "TxSize": 1960171
+            },
+            "Hosts": [
+                {
+                    "Host": "github.com",
+                    "Port": 443,
+                    "RxRate": 0,
+                    "TxRate": 0,
+                    "RxSize": 840413,
+                    "TxSize": 172528
+                },
+                {
+                    "Host": "live.github.com",
+                    "Port": 443,
+                    "RxRate": 0,
+                    "TxRate": 0,
+                    "RxSize": 25710,
+                    "TxSize": 12218
+                },
+                {
+                    "Host": "encrypted-tbn0.gstatic.com",
+                    "Port": 443,
+                    "RxRate": 0,
+                    "TxRate": 0,
+                    "RxSize": 25418,
+                    "TxSize": 960
+                },
+                {
+                    "Host": "ogs.google.com",
+                    "Port": 443,
+                    "RxRate": 0,
+                    "TxRate": 0,
+                    "RxSize": 38138,
+                    "TxSize": 2198
+                }
+                ...
+            ]
+        }
+
+
+Top like UI: ./snet -top
+
+
+![top](images/top.gif)
+
+
+### As upstream server
+
+example config.json:
+
+    {
+        "as-upstream": true,
+        "upstream-type": "tls",
+        "upstream-tls-server-listen": "0.0.0.0:9999",
+        "upstream-tls-key": "server.key", # created by: openssl genrsa -out server.key 2048
+        "upstream-tls-crt": "server.pem", # created by: openssl req -new -x509 -key server.key -out server.pem -days 3650
+        "upstream-tls-token": "xxxx"  # random string
+    }
+
+Only support tls tunnel when run as upstream server
+
+upstream-type:
+
+- tls: run as tls tunnel server
+
+Run:
+
+    ./snet -config config.json
 
 ## For traffic from docker container
 
