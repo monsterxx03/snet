@@ -3,7 +3,6 @@ package topui
 import (
 	"github.com/rivo/tview"
 
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -81,7 +80,7 @@ func NewTop(addr string) *Top {
 	t.addr = addr
 	t.app = tview.NewApplication()
 	layout := tview.NewFlex().SetDirection(tview.FlexRow)
-	t.network = tview.NewTextView()
+	t.network = tview.NewTextView().SetDynamicColors(true)
 
 	t.suspendAction = NewSelectAction("Suspend", keySuspend, true, false, func() {
 		t.suspend = !t.suspend
@@ -104,20 +103,20 @@ func NewTop(addr string) *Top {
 			t.network.ScrollTo(r-1, c)
 		}),
 		NewSelectGroupAction("|Sort:",
-			NewSelectAction("Rx/s", keySortByRxRate, true, true, func() {
+			NewSelectAction("Rx", keySortByRxSize, true, true, func() {
+				t.sort(keySortByRxSize)
+				t.Refresh(false)
+			}),
+			NewSelectAction("Tx", keySortByTxSize, true, false, func() {
+				t.sort(keySortByTxSize)
+				t.Refresh(false)
+			}),
+			NewSelectAction("Rx/s", keySortByRxRate, true, false, func() {
 				t.sort(keySortByRxRate)
 				t.Refresh(false)
 			}),
 			NewSelectAction("Tx/s", keySortByTxRate, true, false, func() {
 				t.sort(keySortByTxRate)
-				t.Refresh(false)
-			}),
-			NewSelectAction("Rx Size", keySortByRxSize, true, false, func() {
-				t.sort(keySortByRxSize)
-				t.Refresh(false)
-			}),
-			NewSelectAction("Tx Size", keySortByTxSize, true, false, func() {
-				t.sort(keySortByTxSize)
 				t.Refresh(false)
 			}),
 			NewSelectAction("Host", keySortByHost, true, false, func() {
@@ -130,6 +129,7 @@ func NewTop(addr string) *Top {
 			}),
 		),
 	)
+	t.sort(keySortByRxSize)
 
 	layout.AddItem(t.network, 0, 1, false).
 		AddItem(bar, 2, 0, true)
@@ -194,9 +194,8 @@ func (t *Top) Refresh(draw bool) {
 			return r.Hosts[i].Port > r.Hosts[j].Port
 		})
 	}
-	buf := new(bytes.Buffer)
-	w := tabwriter.NewWriter(buf, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(w, "Host\tPort\tRX rate\tTX rate\tRX size\tTX size\t")
+	w := tabwriter.NewWriter(t.network, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(w, "Host\tPort\tRX\tTX\tRX rate\tTX rate\t")
 	for _, h := range r.Hosts {
 		host := h.Host
 		if t.hostFilter != "" {
@@ -206,11 +205,10 @@ func (t *Top) Refresh(draw bool) {
 				host = highlight(host, t.hostFilter)
 			}
 		}
-		fmt.Fprintf(w, "%s\t%d\t%s/s\t%s/s\t%s \t%s\t\n",
-			host, h.Port, hb(uint64(h.RxRate)), hb(uint64(h.TxRate)), hb(h.RxSize), hb(h.TxSize))
+		fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s \t%s\t\n",
+			host, h.Port, hb(h.RxSize), hb(h.TxSize), hb(uint64(h.RxRate)) + "/s", hb(uint64(h.TxRate)) + "/s")
 	}
 	w.Flush()
-	fmt.Fprintf(t.network, "%s", buf.String())
 	t.network.ScrollToBeginning()
 	if draw {
 		t.app.Draw()

@@ -36,7 +36,9 @@ func (s *SelectAction) Selected() bool {
 }
 
 func (s *SelectAction) Do() {
-	s.cb()
+	if s.cb != nil {
+		s.cb()
+	}
 }
 
 func (s *SelectAction) SetLabel(label string) {
@@ -49,7 +51,9 @@ func (s *SelectAction) TextLen() int {
 
 func (s *SelectAction) Select() {
 	s.selected = true
-	s.cb()
+	if s.cb != nil {
+		s.cb()
+	}
 }
 
 func (s *SelectAction) UnSelect() {
@@ -58,7 +62,9 @@ func (s *SelectAction) UnSelect() {
 
 func (s *SelectAction) Toggle() {
 	s.selected = !s.selected
-	s.cb()
+	if s.cb != nil {
+		s.cb()
+	}
 }
 
 func (s *SelectAction) Draw(screen tcell.Screen) {

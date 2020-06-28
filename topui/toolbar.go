@@ -1,6 +1,7 @@
 package topui
 
 import (
+	"fmt"
 	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
 )
@@ -52,7 +53,7 @@ func NewToolBar(top *Top, actions ...tview.Primitive) *ToolBar {
 			flex.AddItem(filterAction, 0, 1, false)
 			top.app.SetFocus(bar)
 			top.UnSuspend()
-			filterAction.SetLabel("Filter:" + filterInput.GetText())
+			filterAction.SetLabel(fmt.Sprintf("Filter:[yellow]%s[white]", filterInput.GetText()))
 			top.Refresh(false)
 		}
 	})
