@@ -6,18 +6,6 @@ import (
 	"github.com/rivo/tview"
 )
 
-const (
-	keyQuit         = 'q'
-	keySuspend      = 's'
-	keySortByRxRate = 'r'
-	keySortByRxSize = 'R'
-	keySortByTxRate = 't'
-	keySortByTxSize = 'T'
-	keySortByHost   = 'h'
-	keySortByPort   = 'p'
-	keyFilter       = '/'
-)
-
 type ToolBar struct {
 	*tview.Flex
 	top          *Top
@@ -41,8 +29,10 @@ func NewToolBar(top *Top, actions ...tview.Primitive) *ToolBar {
 	}
 	bar.keyActionMap = m
 
-	filterAction := NewSelectAction("Filter:", keyFilter, false, false, nil)
-	filterInput := tview.NewInputField()
+	filterLabel := "Filter:"
+	filterAction := NewSelectAction(filterLabel, keyFilter, false, false, nil)
+	inputLength := 25
+	filterInput := tview.NewInputField().SetLabel("Host:").SetFieldWidth(inputLength)
 	filterInput.SetChangedFunc(func(text string) {
 		top.FilterHost(text)
 	})
@@ -50,14 +40,15 @@ func NewToolBar(top *Top, actions ...tview.Primitive) *ToolBar {
 		// exit searching state
 		if key == tcell.KeyEscape || key == tcell.KeyEnter {
 			flex.RemoveItem(filterInput)
-			flex.AddItem(filterAction, 0, 1, false)
+			filterWord := filterInput.GetText()
+			filterAction.SetLabel(fmt.Sprintf("%s[yellow]%s[white]", filterLabel, filterWord))
+			flex.AddItem(filterAction, len(filterLabel) + len(filterWord) + 3, 0, false)
 			top.app.SetFocus(bar)
 			top.UnSuspend()
-			filterAction.SetLabel(fmt.Sprintf("Filter:[yellow]%s[white]", filterInput.GetText()))
 			top.Refresh(false)
 		}
 	})
-	flex.AddItem(filterAction, 0, 1, false)
+	flex.AddItem(filterAction, filterAction.TextLen(), 0, false)
 
 	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		key := event.Rune()
@@ -75,7 +66,7 @@ func NewToolBar(top *Top, actions ...tview.Primitive) *ToolBar {
 		} else if key == keyFilter {
 			// changing to search state
 			flex.RemoveItem(filterAction)
-			flex.AddItem(filterInput, 0, 1, false)
+			flex.AddItem(filterInput, inputLength, 0, false)
 			top.app.SetFocus(filterInput)
 			top.Suspend()
 		}

@@ -92,12 +92,12 @@ func NewTop(addr string) *Top {
 			t.app.Stop()
 		}),
 		t.suspendAction,
-		NewSelectAction("↓", 'j', false, false, func() {
+		NewSelectAction("↓", keyDown, false, false, func() {
 			t.Suspend()
 			r, c := t.network.GetScrollOffset()
 			t.network.ScrollTo(r+1, c)
 		}),
-		NewSelectAction("↑", 'k', false, false, func() {
+		NewSelectAction("↑", keyUp, false, false, func() {
 			t.Suspend()
 			r, c := t.network.GetScrollOffset()
 			t.network.ScrollTo(r-1, c)
@@ -194,8 +194,12 @@ func (t *Top) Refresh(draw bool) {
 			return r.Hosts[i].Port > r.Hosts[j].Port
 		})
 	}
-	w := tabwriter.NewWriter(t.network, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(w, "Host\tPort\tRX\tTX\tRX rate\tTX rate\t")
+	w := tabwriter.NewWriter(t.network, 0, 0, 2, ' ',  tabwriter.AlignRight)
+	hostHeader := "Host"
+	if t.hostFilter != "" {
+		hostHeader = "[red]Host[white]"
+	}
+	fmt.Fprintln(w, hostHeader+"\tPort\tRX\tTX\tRX rate\tTX rate\t")
 	for _, h := range r.Hosts {
 		host := h.Host
 		if t.hostFilter != "" {
