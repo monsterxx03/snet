@@ -23,10 +23,7 @@ func parseServerNameFromHTTPHeader(data []byte) (string, error) {
 		}
 		l := strings.ToLower(string(b))
 		kv := strings.Split(l, ":")
-		if len(kv) != 2 {
-			continue
-		}
-		if strings.TrimSpace(kv[0]) != "host" {
+		if len(kv) != 2 || strings.TrimSpace(kv[0]) != "host" {
 			continue
 		}
 		return strings.TrimSpace(kv[1]), nil

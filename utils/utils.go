@@ -64,25 +64,20 @@ func Pipe(ctx context.Context, src, remote net.Conn, timeout time.Duration, rxCh
 	p := &stats.P{Host: fmt.Sprintf("%s:%d", dstHost, dstPort)}
 	// server name sniffer
 	if sn != nil {
+		var serverName string
+		var buf []byte
+		var err error
 		if sn.EnableTLS && dstPort == 443 {
-			serverName, buf, err := sn.SnifferTLSSNI(src)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				p.Host = fmt.Sprintf("%s:%d", serverName, dstPort)
-			}
-			n, err := remote.Write(buf)
-			p.Tx += uint64(n)
-			if err != nil {
-				return err
-			}
+			serverName, buf, err = sn.SnifferTLSSNI(src)
 		} else if sn.EnableHTTP && dstPort == 80 {
-			serverName, buf, err := sn.SnifferHTTPHost(src)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				p.Host = fmt.Sprintf("%s:%d", serverName, dstPort)
-			}
+			serverName, buf, err = sn.SnifferHTTPHost(src)
+		}
+		if err != nil {
+			fmt.Println(err)
+		} else if serverName != "" {
+			p.Host = fmt.Sprintf("%s:%d", serverName, dstPort)
+		}
+		if buf != nil {
 			n, err := remote.Write(buf)
 			p.Tx += uint64(n)
 			if err != nil {

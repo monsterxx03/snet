@@ -127,9 +127,10 @@ If you use it on router, change `mode` to `router`, and listen-host should be yo
 
 In config.json:
 
--  "enable-stats": true  // enable stats api
--  "stats-port": 8810 // stats api listen port
--  "stats-enable-tls-sni-sniffer": true  // enable sni sniffer for tls
+- "enable-stats": true  // enable stats api
+- "stats-port": 8810 // stats api listen port
+- "stats-enable-tls-sni-sniffer": true  // parse server name from tls sni(for traffic to port 443)
+- "stats-enable-http-host-sniffer": true // parse server from from http header(for traffic to port 80)
 
 snet server will serve stats api on  port 8810 
 
