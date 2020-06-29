@@ -88,6 +88,18 @@ func NewTop(addr string) *Top {
 
 	bar := NewToolBar(
 		t,
+		NewSelectAction("", keyPageDown, false, false, func() {
+			t.Suspend()
+			_, _, _, h := t.network.GetInnerRect()
+			r, c := t.network.GetScrollOffset()
+			t.network.ScrollTo(r+h-1, c)
+		}),
+		NewSelectAction("", keyPageUp, false, false, func() {
+			t.Suspend()
+			_, _, _, h := t.network.GetInnerRect()
+			r, c := t.network.GetScrollOffset()
+			t.network.ScrollTo(r-h+1, c)
+		}),
 		NewSelectAction("Quit", keyQuit, false, false, func() {
 			t.app.Stop()
 		}),
@@ -194,7 +206,7 @@ func (t *Top) Refresh(draw bool) {
 			return r.Hosts[i].Port > r.Hosts[j].Port
 		})
 	}
-	w := tabwriter.NewWriter(t.network, 0, 0, 2, ' ',  tabwriter.AlignRight)
+	w := tabwriter.NewWriter(t.network, 0, 0, 2, ' ', tabwriter.AlignRight)
 	hostHeader := "Host"
 	if t.hostFilter != "" {
 		hostHeader = "[red]Host[white]"
@@ -210,7 +222,7 @@ func (t *Top) Refresh(draw bool) {
 			}
 		}
 		fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s \t%s\t\n",
-			host, h.Port, hb(h.RxSize), hb(h.TxSize), hb(uint64(h.RxRate)) + "/s", hb(uint64(h.TxRate)) + "/s")
+			host, h.Port, hb(h.RxSize), hb(h.TxSize), hb(uint64(h.RxRate))+"/s", hb(uint64(h.TxRate))+"/s")
 	}
 	w.Flush()
 	t.network.ScrollToBeginning()

@@ -18,7 +18,9 @@ func NewToolBar(top *Top, actions ...tview.Primitive) *ToolBar {
 	m := make(map[rune]tview.Primitive)
 	for _, a := range actions {
 		if s, ok := a.(*SelectAction); ok {
-			flex.AddItem(a, s.TextLen()+1, 0, false)
+			if s.Label != "" {
+				flex.AddItem(a, s.TextLen()+1, 0, false)
+			}
 			m[s.Key] = a
 		} else if s, ok := a.(*SelectGroupAction); ok {
 			flex.AddItem(a, 0, 1, false)
@@ -42,7 +44,7 @@ func NewToolBar(top *Top, actions ...tview.Primitive) *ToolBar {
 			flex.RemoveItem(filterInput)
 			filterWord := filterInput.GetText()
 			filterAction.SetLabel(fmt.Sprintf("%s[yellow]%s[white]", filterLabel, filterWord))
-			flex.AddItem(filterAction, len(filterLabel) + len(filterWord) + 3, 0, false)
+			flex.AddItem(filterAction, len(filterLabel)+len(filterWord)+3, 0, false)
 			top.app.SetFocus(bar)
 			top.UnSuspend()
 			top.Refresh(false)

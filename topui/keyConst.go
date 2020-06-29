@@ -5,6 +5,8 @@ const (
 	keySuspend      = 's'
 	keyUp           = 'k'
 	keyDown         = 'j'
+	keyPageUp       = 'u'
+	keyPageDown     = ' '
 	keySortByRxRate = 'r'
 	keySortByRxSize = 'R'
 	keySortByTxRate = 't'
