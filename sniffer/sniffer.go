@@ -33,6 +33,17 @@ func (s *Sniffer) SnifferTLSSNI(conn net.Conn) (serverName string, buf []byte, e
 
 func (s *Sniffer) SnifferHTTPHost(conn net.Conn) (serverName string, buf []byte, err error) {
 	if s.EnableHTTP {
+		buf = make([]byte, 1024)
+		n := 0
+		n, err = conn.Read(buf)
+		buf = buf[:n]
+		if err != nil {
+			return
+		}
+		serverName, err = parseServerNameFromHTTPHeader(buf)
+		if err != nil {
+			return
+		}
 		return
 	}
 	return

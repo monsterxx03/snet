@@ -77,7 +77,17 @@ func Pipe(ctx context.Context, src, remote net.Conn, timeout time.Duration, rxCh
 				return err
 			}
 		} else if sn.EnableHTTP && dstPort == 80 {
-			sn.SnifferHTTPHost(src)
+			serverName, buf, err := sn.SnifferHTTPHost(src)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				p.Host = fmt.Sprintf("%s:%d", serverName, dstPort)
+			}
+			n, err := remote.Write(buf)
+			p.Tx += uint64(n)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
