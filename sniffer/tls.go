@@ -41,7 +41,7 @@ func parseServerNameFromSNI(data []byte) (string, error) {
 	index = 0
 	// walkthrough extension blocks to SNI block
 	for {
-		if index > len(extBlock) {
+		if index >= len(extBlock)-1 {
 			break
 		}
 		if int(extBlock[index])<<8+int(extBlock[index+1]) == 0x00 {
