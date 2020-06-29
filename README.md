@@ -2,38 +2,20 @@
 
 # SNET
 
-It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one binary, don't depend on dnsmasq.
+Systemwide transparent tcp proxy works on linux, MacOS, router.
 
+It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one binary, don't depend on dnsmasq.
 
 ## Features
 
 - ss/http-tunnel/tls-tunnel/socks5 as upstream server
-- Sytemwide tcp proxy on linux desktop/server(iptables), MacOS desktop (pfctl)
-- Works on openwrt router
 - Bypass traffic in China
 - Handle DNS in the way like ChinaDNS, so website have CDN out of China won't be redirected to their overseas site
 - Local DNS cache based on TTL
 - block by domain name
 - hostname map
 - DNS prefetch
-
-## Limation:
-
-- tcp only (but dns is handled)
-- ipv4 only
-
-## Tested on:
-
-Desktop:
-
-- manjaro
-- ubuntu 18.04
-- MacOS 10.13.6
-
-Router:
-
-- hiwifi2
-- ubnt er-x
+- stats api and a top like terminal UI
 
 ## Usage
 
@@ -100,17 +82,19 @@ Example config.json:
         },
         "block-host-file": "", # if set, domain name in this file will return 127.0.0.1 to client
         "block-hosts": ["*.hpplay.cn"], # support block hosts with wildcard
-        "mode": "local"   # run on desktop: local, run on router: router
+        "mode": "local",   # run on desktop: local, run on router: router
+
+        "active-eni": ""   # only used on Mac, if multi network interface is active, snet try to use the one with highest priority, use this option to override this behavior
     }
 
-supported proxy-type:
+**proxy-type**:
 
 - ss: use ss as upstream server
 - http: use http proxy server as upstream server(should support `CONNECT` method, eg: squid)
-- tls: use snet tls tunnel as upstream server
+- tls: use snet tls tunnel as upstream server, see: https://github.com/monsterxx03/snet#as-upstream-server
 - socks5: use socks5 as upstream server. Note: if your socks5 proxy server is running on same host with snet, ensure to add socks5's upstream server address to snet's `bypass-hosts` list, or socks5's traffic to upstream server will be hijacked by snet, being a loop.
 
-Since `snet` will modify iptables/pf, root privilege is required. 
+`snet` will modify iptables/pf, root privilege is required. 
 
 `sudo ./snet -config config.json`
 
@@ -233,26 +217,20 @@ During hot reload:
 - dns cache will be reserved.
 - all tcp connections will be closed.
 
-## Notice
-
-### If crash
-
-If crash or force killed(kill -9), snet will have no chance to cleanup iptables/pf rules, it will make you have no internet access.
-
-You need to clean them manually(If restart snet, it will try to cleanup) or restart your laptop :(
-
-Linux:
-
-    sudo iptables -t nat -F  
-    # if you install docker, docker's iptable rules will be flushed as well, just restart docker it will recreate them.
-
-MacOS:
-
-    sudo pfctl -d
-
-### Mac multi network interface
-
 snet will try to find active network interface current using on starting, you can use `active-eni` option (eg: en4) to override it.
+
+## Tested on:
+
+Desktop:
+
+- manjaro
+- ubuntu 18.04
+- MacOS 10.15.1
+
+Router:
+
+- hiwifi2
+- ubnt er-x
 
 ## Known issue:
 
