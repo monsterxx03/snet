@@ -66,8 +66,8 @@ func (s *HostStats) RxRate2() float64 {
 }
 
 func (s *HostStats) TxRate2() float64 {
-	if s.txRing.Move(-2).Value != nil {
-		valPrev := s.txRing.Move(-2).Value.(uint64)
+	if s.txRing.Move(-3).Value != nil {
+		valPrev := s.txRing.Move(-3).Value.(uint64)
 		valCur := s.txRing.Move(-1).Value.(uint64)
 		return float64(valCur-valPrev) / RATE_INTERVAL
 	}
