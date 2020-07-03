@@ -147,6 +147,6 @@ func (s *Server) Shutdown() error {
 	if err != nil {
 		return err
 	}
-	l.Info("tcp server shutdown")
+	l.Info("redirector tcp server shutdown")
 	return nil
 }

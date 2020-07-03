@@ -24,6 +24,7 @@ type LocalServer struct {
 	stats    *stats.Stats
 	quit     bool
 	qlock    sync.Mutex
+	apiServer *http.Server
 	ctx      context.Context
 }
 
@@ -92,6 +93,7 @@ func (s *LocalServer) Shutdown() {
 	}
 	s.dnServer.Shutdown()
 	s.server.Shutdown()
+	s.apiServer.Shutdown(s.ctx)
 	s.Clean()
 	s.quit = true
 }
@@ -116,16 +118,22 @@ func (s *LocalServer) Run(dnsCache *cache.LRU) {
 	go s.server.Run()
 	if s.cfg.EnableStats {
 		go s.refreshTrafficRate()
-		http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(s.stats.ToJson())
-		})
-		addr := fmt.Sprintf("%s:%d", s.cfg.LHost, s.cfg.StatsPort)
-		l.Infof("Api server listen on http://%s", addr)
-		go http.ListenAndServe(addr, nil)
+		go s.startApiServer()
 	}
 	<-s.ctx.Done()
 	s.Shutdown()
+}
+
+func (s *LocalServer) startApiServer() {
+	addr := fmt.Sprintf("%s:%d", s.cfg.LHost, s.cfg.StatsPort)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(s.stats.ToJson())
+	})
+	s.apiServer = &http.Server{Addr: addr, Handler: mux}
+	l.Infof("api server listen on http://%s", addr)
+	s.apiServer.ListenAndServe()
 }
 
 func (s *LocalServer) refreshTrafficRate() {
