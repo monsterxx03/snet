@@ -95,7 +95,7 @@ func Pipe(ctx context.Context, src, remote net.Conn, timeout time.Duration, rxCh
 			errCh <- err
 			return
 		}
-		buf := make([]byte, 1024)
+		buf := make([]byte, 512)
 	COPY:
 		for {
 			select {
