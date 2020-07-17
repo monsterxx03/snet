@@ -37,7 +37,12 @@
     "host-map": {},
     "block-host-file": "",
     "block-hosts": ["*.hpplay.cn"],
-    "mode": "local"
+    "active-eni": "",
+    "mode": "local",
+    "enable-stats": false,
+    "stats-port": 8810,
+    "stats-enable-tls-sni-sniffer": false,
+    "stats-enable-http-host-sniffer": false,
 
     "upstream-type": "tls",
     "upstream-tls-server-listen": "0.0.0.0:9999",

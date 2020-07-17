@@ -16,16 +16,16 @@ import (
 )
 
 type LocalServer struct {
-	cfg      *config.Config
-	cfgChan  chan *config.Config
-	redir    redirector.Redirector
-	dnServer *dns.DNS
-	server   *Server
-	stats    *stats.Stats
-	quit     bool
-	qlock    sync.Mutex
+	cfg       *config.Config
+	cfgChan   chan *config.Config
+	redir     redirector.Redirector
+	dnServer  *dns.DNS
+	server    *Server
+	stats     *stats.Stats
+	quit      bool
+	qlock     sync.Mutex
 	apiServer *http.Server
-	ctx      context.Context
+	ctx       context.Context
 }
 
 func (s *LocalServer) Clean() {
