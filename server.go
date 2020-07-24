@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -126,6 +127,9 @@ func (s *Server) handle(conn *net.TCPConn) error {
 	dstHost, dstPort, err := redirector.GetDstAddr(conn)
 	if err != nil {
 		return err
+	}
+	if dstHost == "127.0.0.1" {
+		return errors.New("drop connection to localhost")
 	}
 	remoteConn, err := s.proxy.Dial(dstHost, dstPort)
 	if err != nil {
