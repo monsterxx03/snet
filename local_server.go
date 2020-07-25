@@ -93,7 +93,9 @@ func (s *LocalServer) Shutdown() {
 	}
 	s.dnServer.Shutdown()
 	s.server.Shutdown()
-	s.apiServer.Shutdown(s.ctx)
+	if s.cfg.EnableStats {
+		s.apiServer.Shutdown(s.ctx)
+	}
 	s.Clean()
 	s.quit = true
 }
