@@ -15,20 +15,25 @@ import (
 	"snet/utils"
 )
 
-// #include <sys/ioctl.h>
-// #define PRIVATE
-// #include <net/pfvar.h>
-// #undef PRIVATE
-import "C"
-
 const (
 	tableName = "BYPASS_SNET"
 	pfDev     = "/dev/pf"
+	// https://github.com/apple/darwin-xnu/blob/master/bsd/net/pfvar.h#L158
+	PF_OUT = 2
+	// https://github.com/apple/darwin-xnu/blob/master/bsd/net/pfvar.h#L2096
+	DIOCNATLOOK = 3226747927
 )
 
 // opened /dev/pf
 var pf *os.File
 var pfLock *sync.Mutex = new(sync.Mutex)
+
+// https://github.com/apple/darwin-xnu/blob/master/bsd/net/pfvar.h#L1773
+type pfioc_natlook struct {
+	saddr, daddr, rsaddr, rdaddr [16]byte	
+	sxport, dxport, rsxport, rdxport [4]byte
+	af, proto, proto_variant, direction uint8
+}
 
 type PFTable struct {
 	Name        string
@@ -168,31 +173,31 @@ func GetDstAddr(conn *net.TCPConn) (dstHost string, dstPort int, err error) {
 		return "", -1, err
 	}
 	pffd := pff.Fd()
-	pnl := new(C.struct_pfioc_natlook)
-	pnl.direction = C.PF_OUT
-	pnl.af = C.AF_INET
-	pnl.proto = C.IPPROTO_TCP
+	pnl := new(pfioc_natlook)
+	pnl.direction = PF_OUT
+	pnl.af = syscall.AF_INET
+	pnl.proto = syscall.IPPROTO_TCP
 
 	// fullfill client ip & port
-	copy(pnl.saddr.pfa[:4], caddr.IP)
+	copy(pnl.saddr[:4], caddr.IP)
 	cport := make([]byte, 2)
 	binary.BigEndian.PutUint16(cport, uint16(caddr.Port))
 	copy(pnl.sxport[:], cport)
 
 	// fullfill local proxy's bind ip & port
-	copy(pnl.daddr.pfa[0:4], laddr.IP)
+	copy(pnl.daddr[0:4], laddr.IP)
 	lport := make([]byte, 2)
 	binary.BigEndian.PutUint16(lport, uint16(laddr.Port))
 	copy(pnl.dxport[:], lport)
 
 	// do lookup
-	if err := ioctl(pffd, C.DIOCNATLOOK, unsafe.Pointer(pnl)); err != nil {
+	if err := ioctl(pffd, DIOCNATLOOK, unsafe.Pointer(pnl)); err != nil {
 		return "", -1, err
 	}
 
 	// get redirected ip & port
 	rport := make([]byte, 2)
 	copy(rport, pnl.rdxport[:2])
-	raddr := pnl.rdaddr.pfa[:4]
+	raddr := pnl.rdaddr[:4]
 	return fmt.Sprintf("%d.%d.%d.%d", raddr[0], raddr[1], raddr[2], raddr[3]), int(binary.BigEndian.Uint16(rport)), nil
 }
