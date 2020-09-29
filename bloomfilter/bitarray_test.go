@@ -5,9 +5,6 @@ import (
 )
 
 func TestBitArray(t *testing.T) {
-	if _, err := NewBitarray(3); err == nil {
-		t.Error("error didn't returned for wrong bit array size")
-	}
 	ba, err := NewBitarray(16)
 	if err != nil {
 		t.Error(err)
