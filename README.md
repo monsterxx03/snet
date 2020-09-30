@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.com/monsterxx03/snet.svg?branch=master)](https://travis-ci.com/monsterxx03/snet)
+[![codecov](https://codecov.io/gh/monsterxx03/snet/branch/master/graph/badge.svg)](https://codecov.io/gh/monsterxx03/snet)
+![](https://github.com/monsterxx03/snet/workflows/Go/badge.svg)
 
 # SNET
 

@@ -3,3 +3,4 @@ vendor/
 /config.json
 ad_hosts.txt
 apnic.txt
+coverage.txt

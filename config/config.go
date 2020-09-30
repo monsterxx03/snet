@@ -15,7 +15,6 @@ const (
 	DefaultLHost            = "127.0.0.1"
 	DefaultLPort            = 1111
 	DefaultProxyTimeout     = 30
-	DefaultProxyType        = "ss"
 	DefaultProxyScope       = ProxyScopeBypassCN
 	DefaultCNDNS            = "223.6.6.6"
 	DefaultFQDNS            = "8.8.8.8"

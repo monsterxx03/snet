@@ -21,7 +21,7 @@ update:
 	go fmt
 
 test:
-	go test --race -v $$(go list ./...| grep -v -e /vendor/)
+	go test -coverprofile=coverage.txt -covermode=atomic --race -v $$(go list ./...| grep -v -e /vendor/)
 
 build_mipsle_softfloat:
 	GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build -ldflags $(LDFLAGS) -o bin/snet_mipsle_softfloat
