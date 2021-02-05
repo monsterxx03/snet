@@ -41,6 +41,11 @@ type Config struct {
 	SSPort                     int               `json:"ss-port"`
 	SSCphierMethod             string            `json:"ss-chpier-method"`
 	SSPasswd                   string            `json:"ss-passwd"`
+	SS2Host                    string            `json:"ss2-host"`
+	SS2Port                    int               `json:"ss2-port"`
+	SS2CipherMethod            string            `json:"ss2-cipher-method"`
+	SS2Passwd                  string            `json:"ss2-passwd"`
+	SS2Key                     string            `json:"ss2-key"`
 	TLSHost                    string            `json:"tls-host"`
 	TLSPort                    int               `json:"tls-port"`
 	TLSToken                   string            `json:"tls-token"`

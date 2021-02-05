@@ -9,7 +9,7 @@ It's a solution like: (redsocks + ss-local)/ss-redir + ChinaDNS. But all in one 
 
 ## Features
 
-- ss/http-tunnel/tls-tunnel/socks5 as upstream server
+- ss/go-ss2/http-tunnel/tls-tunnel/socks5 as upstream server
 - Bypass traffic in China
 - Handle DNS in the way like ChinaDNS, so website have CDN out of China won't be redirected to their overseas site
 - Local DNS cache based on TTL
@@ -54,6 +54,14 @@ Example config.json:
         # https://github.com/shadowsocks/shadowsocks-go/blob/1.2.1/shadowsocks/encrypt.go#L159
         "ss-chpier-method": "aes-256-cfb",
         "ss-passwd": "passwd",
+    
+        # config used when proxy-type is "ss2"
+        "ss2-host": "",
+        "ss2-port": 8080,
+        # https://github.com/shadowsocks/go-shadowsocks2/blob/v0.1.3/core/cipher.go#L29
+        "ss2-cipher-method": "AEAD_CHACHA20_POLY1305",
+        "ss2-key": "",
+        "ss2-password": "passwd"
 
         # config used when proxy-type is "tls"
         "tls-host": "",
@@ -91,6 +99,7 @@ Example config.json:
 **proxy-type**:
 
 - ss: use ss as upstream server
+- ss2: use go-ss2(https://github.com/shadowsocks/go-shadowsocks2) as upstream server
 - http: use http proxy server as upstream server(should support `CONNECT` method, eg: squid)
 - tls: use snet tls tunnel as upstream server, see: https://github.com/monsterxx03/snet#as-upstream-server
 - socks5: use socks5 as upstream server. Note: if your socks5 proxy server is running on same host with snet, ensure to add socks5's upstream server address to snet's `bypass-hosts` list, or socks5's traffic to upstream server will be hijacked by snet, being a loop.

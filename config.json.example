@@ -16,6 +16,11 @@
     "ss-port": 8080,
     "ss-chpier-method": "aes-256-cfb",
     "ss-passwd": "passwd",
+    "ss2-host": "",
+    "ss2-port": 8080,
+    "ss2-cipher-method": "AEAD_CHACHA20_POLY1305",
+    "ss2-key": "key",
+    "ss2-password": "passwd"
     "tls-host": "",
     "tls-port": 443,
     "tls-token": "",

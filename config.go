@@ -9,6 +9,7 @@ import (
 	"snet/proxy/http"
 	"snet/proxy/socks5"
 	"snet/proxy/ss"
+	"snet/proxy/ss2"
 	"snet/proxy/tls"
 )
 
@@ -20,6 +21,12 @@ func genConfigByType(c *config.Config, proxyType string) (proxy.Config, error) {
 			return nil, err
 		}
 		return &ss.Config{Host: ip, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd}, nil
+	case "ss2":
+		ip, err := resolvHostIP(c.SS2Host)
+		if err != nil {
+			return nil, err
+		}
+		return &ss2.Config{Host: ip, Port: c.SS2Port, CipherMethod: c.SS2CipherMethod, Password: c.SS2Passwd, Key: c.SS2Key}, nil
 	case "http":
 		ip, err := resolvHostIP(c.HTTPProxyHost)
 		if err != nil {
