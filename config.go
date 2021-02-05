@@ -20,7 +20,14 @@ func genConfigByType(c *config.Config, proxyType string) (proxy.Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &ss.Config{Host: ip, Port: c.SSPort, CipherMethod: c.SSCphierMethod, Password: c.SSPasswd}, nil
+		var cipher string
+		// backwards compatibility for typo "ss-cphier-method"
+		if c.SSCipherMethod != "" {
+			cipher = c.SSCipherMethod
+		} else {
+			cipher = c.SSChpierMethod
+		}
+		return &ss.Config{Host: ip, Port: c.SSPort, CipherMethod: cipher, Password: c.SSPasswd}, nil
 	case "ss2":
 		ip, err := resolvHostIP(c.SS2Host)
 		if err != nil {

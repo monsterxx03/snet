@@ -39,7 +39,8 @@ type Config struct {
 	HTTPProxyAuthPassword      string            `json:"http-proxy-auth-password"`
 	SSHost                     string            `json:"ss-host"`
 	SSPort                     int               `json:"ss-port"`
-	SSCphierMethod             string            `json:"ss-chpier-method"`
+	SSChpierMethod             string            `json:"ss-chpier-method"`
+	SSCipherMethod             string            `json:"ss-cipher-method"`
 	SSPasswd                   string            `json:"ss-passwd"`
 	SS2Host                    string            `json:"ss2-host"`
 	SS2Port                    int               `json:"ss2-port"`

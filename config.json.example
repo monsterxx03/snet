@@ -14,7 +14,7 @@
     "http-proxy-auth-password": "",
     "ss-host": "",
     "ss-port": 8080,
-    "ss-chpier-method": "aes-256-cfb",
+    "ss-cipher-method": "aes-256-cfb",
     "ss-passwd": "passwd",
     "ss2-host": "",
     "ss2-port": 8080,
