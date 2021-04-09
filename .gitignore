@@ -1,6 +1,6 @@
 bin/
 vendor/
-/config.json
+/config.json*
 ad_hosts.txt
 apnic.txt
 coverage.txt
