@@ -28,10 +28,9 @@ func (s *Server) Init(c proxy.Config) error {
 	s.Host = s.cfg.Host
 	s.Port = s.cfg.Port
 
-	auth := new(xproxy.Auth)
+	var auth *xproxy.Auth
 	if s.cfg.AuthUser != "" {
-		auth.User = s.cfg.AuthUser
-		auth.Password = s.cfg.AuthPassword
+		auth = &xproxy.Auth{User: s.cfg.AuthUser, Password: s.cfg.AuthPassword}
 	}
 	dial, err := xproxy.SOCKS5("tcp", fmt.Sprintf("%s:%d", s.Host, s.Port), auth, xproxy.Direct)
 	if err != nil {

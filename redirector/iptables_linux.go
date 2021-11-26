@@ -43,7 +43,7 @@ func (s *IPSet) Init() error {
 	result := make([]string, 0, len(s.bypassCidrs)+1)
 	result = append(result, "create "+s.Name+" hash:net family inet hashsize 1024 maxelem 65536")
 	for _, route := range s.bypassCidrs {
-		result = append(result, "add "+s.Name+" "+route)
+		result = append(result, "add "+s.Name+" "+route+" -exist")
 	}
 	cmd := exec.Command("ipset", "restore")
 	stdin, err := cmd.StdinPipe()
@@ -196,6 +196,6 @@ func NewRedirector(byPassRoutes []string, byPassSrcIPs []string, eni string, l *
 		return nil, errors.New("ipset not found")
 	}
 	bypass := append(byPassRoutes, whitelistCIDR...)
-	ipset := &IPSet{Name: setName, bypassCidrs: bypass}
+	ipset := &IPSet{Name: setName, bypassCidrs: bypass, l: l}
 	return &IPTables{ipset, byPassSrcIPs, l}, nil
 }
